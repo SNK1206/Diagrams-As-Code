@@ -1,0 +1,100 @@
+package com.diagramas.core;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class LexerBase {
+    private final String codigo;
+    private final ManejadorErrores manejadorErrores;
+    private int indice;
+    private int lineaActual;
+
+    public LexerBase(String codigo, ManejadorErrores manejadorErrores) {
+        this.codigo = codigo;
+        this.manejadorErrores = manejadorErrores;
+        this.indice = 0;
+        this.lineaActual = 1;
+    }
+
+    public List<Token> tokenizar() {
+        List<Token> tokens = new ArrayList<>();
+
+        while (indice < codigo.length()) {
+            char actual = codigo.charAt(indice);
+
+            // 1. Manejo de saltos de línea y espacios en blanco
+            if (actual == '\n') {
+                lineaActual++;
+                indice++;
+                continue;
+            }
+            if (Character.isWhitespace(actual)) {
+                indice++;
+                continue;
+            }
+
+            // 2. Signos de puntuación de un solo carácter
+            if (actual == ';') {
+                tokens.add(new Token(Token.Tipo.PUNTO_Y_COMA, ";", lineaActual));
+                indice++;
+                continue;
+            }
+            if (actual == ':') {
+                tokens.add(new Token(Token.Tipo.DOS_PUNTOS, ":", lineaActual));
+                indice++;
+                continue;
+            }
+            if (actual == '{') {
+                tokens.add(new Token(Token.Tipo.LLAVE_IZQ, "{", lineaActual));
+                indice++;
+                continue;
+            }
+            if (actual == '}') {
+                tokens.add(new Token(Token.Tipo.LLAVE_DER, "}", lineaActual));
+                indice++;
+                continue;
+            }
+
+            // 3. Cadenas de texto literales (entre comillas)
+            if (actual == '"') {
+                StringBuilder sb = new StringBuilder();
+                indice++; // Saltar la comilla de apertura
+                while (indice < codigo.length() && codigo.charAt(indice) != '"') {
+                    sb.append(codigo.charAt(indice));
+                    indice++;
+                }
+                if (indice >= codigo.length()) {
+                    manejadorErrores.reportarError(lineaActual, "Léxico", "Cadena de texto sin cerrar.", "Añade comillas dobles (\") al final del texto.");
+                } else {
+                    indice++; // Saltar la comilla de cierre
+                    tokens.add(new Token(Token.Tipo.TEXTO_LITERAL, sb.toString(), lineaActual));
+                }
+                continue;
+            }
+
+            // 4. Identificadores y Palabras Clave
+            if (Character.isLetter(actual) || actual == '_') {
+                StringBuilder sb = new StringBuilder();
+                while (indice < codigo.length() && (Character.isLetterOrDigit(codigo.charAt(indice)) || codigo.charAt(indice) == '_')) {
+                    sb.append(codigo.charAt(indice));
+                    indice++;
+                }
+                String lexema = sb.toString();
+
+                if (lexema.equals("diagrama")) {
+                    tokens.add(new Token(Token.Tipo.PR_DIAGRAMA, lexema, lineaActual));
+                } else {
+                    tokens.add(new Token(Token.Tipo.IDENTIFICADOR, lexema, lineaActual));
+                }
+                continue;
+            }
+
+            // 5. Captura pedagógica de caracteres inválidos
+            manejadorErrores.reportarErrorLéxico(lineaActual, actual);
+            indice++;
+        }
+
+        tokens.add(new Token(Token.Tipo.EOF, "EOF", lineaActual));
+        return tokens;
+    }
+}

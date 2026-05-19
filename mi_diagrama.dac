@@ -1,0 +1,4 @@
+diagrama Flujo;
+inicio Comenzar;
+nodo LeerDatos "Leer credenciales";
+Comenzar conecta LeerDatos;
