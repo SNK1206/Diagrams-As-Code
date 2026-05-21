@@ -15,15 +15,15 @@ public class ParserBase {
         this.posicion = 0;
     }
 
-    public void analizarCabecera() {
+    // AHORA RETORNA EL AST GENERADO (Object para dar soporte polimórfico a cualquier diagrama)
+    public Object analizarCabecera() {
         if (tokens.isEmpty() || tokens.get(0).getTipo() == Token.Tipo.EOF) {
             manejadorErrores.reportarError(1, "Parser Base", "El archivo .dac está completamente vacío.", "Escriba la instrucción de cabecera: 'diagrama [Tipo];'");
-            return;
+            return null;
         }
 
         Token tokenActual = tokens.get(posicion);
 
-        // 1. Validar palabra clave obligatoria 'diagrama'
         if (tokenActual.getTipo() != Token.Tipo.PR_DIAGRAMA) {
             manejadorErrores.reportarError(
                     tokenActual.getLinea(),
@@ -31,13 +31,12 @@ public class ParserBase {
                     "Falta la cabecera obligatoria del lenguaje.",
                     "Todo archivo .dac debe iniciar estrictamente con la palabra clave 'diagrama' (ej. diagrama Flujo;)."
             );
-            return;
+            return null;
         }
 
         posicion++;
         Token tokenTipo = tokens.get(posicion);
 
-        // 2. Validar que lo siguiente sea el Tipo de diagrama (Identificador)
         if (tokenTipo.getTipo() != Token.Tipo.IDENTIFICADOR) {
             manejadorErrores.reportarError(
                     tokenTipo.getLinea(),
@@ -45,13 +44,12 @@ public class ParserBase {
                     "Se esperaba el tipo de diagrama.",
                     "Especifique un contexto válido después de la palabra 'diagrama' (ej. Flujo, BD, Redes)."
             );
-            return;
+            return null;
         }
 
         posicion++;
         Token tokenPuntoYComa = tokens.get(posicion);
 
-        // 3. Validar el cierre con punto y coma ';'
         if (tokenPuntoYComa.getTipo() != Token.Tipo.PUNTO_Y_COMA) {
             manejadorErrores.reportarError(
                     tokenPuntoYComa.getLinea(),
@@ -59,42 +57,36 @@ public class ParserBase {
                     "Falta el punto y coma ';' al final de la cabecera.",
                     "Coloque un ';' inmediatamente después del nombre del tipo de diagrama."
             );
-            return;
+            return null;
         }
 
-        posicion++; // Consumir el ';' exitosamente
+        posicion++; // Consumir el ';'
 
-        // 4. Bloqueo de contexto estricto
         String tipoDiagrama = tokenTipo.getLexema();
         tablaSimbolos.setContextoActivo(tipoDiagrama);
-        System.out.println("🔒 [ParserBase] Contexto '" + tipoDiagrama + "' bloqueado y activado de manera estricta.");
+        System.out.println("🔒 [ParserBase] Contexto '" + tipoDiagrama + "' bloqueado de manera estricta.");
 
-        // Pasar los tokens restantes al subsistema modular correspondiente
-        delegarAlModulo(tipoDiagrama);
+        return delegarAlModulo(tipoDiagrama);
     }
 
-    private void delegarAlModulo(String tipoDiagrama) {
+    private Object delegarAlModulo(String tipoDiagrama) {
         List<Token> tokensRestantes = tokens.subList(posicion, tokens.size());
-
-        System.out.println("✈️ [Core] Transfiriendo " + (tokensRestantes.size() - 1) +
-                " tokens al ecosistema modular.");
 
         switch (tipoDiagrama.toLowerCase()) {
             case "flujo":
-                // Instanciamos el parser especializado del módulo de flujo
                 com.diagramas.modulos.flujo.FlujoParser parserFlujo =
                         new com.diagramas.modulos.flujo.FlujoParser(tokensRestantes, tablaSimbolos, manejadorErrores);
 
-                // Ejecutamos el análisis e imprimimos el AST resultante
                 com.diagramas.modulos.flujo.ast.RaizFlujoAST ast = parserFlujo.parsear();
 
                 if (!manejadorErrores.tieneErrores()) {
                     System.out.println(ast);
+                    return ast; // Retornamos el AST para que la GUI lo grafique
                 }
                 break;
 
             case "bd":
-                // Instancia futura del parser de Base de Datos
+                // Instancia futura
                 break;
 
             default:
@@ -105,5 +97,6 @@ public class ParserBase {
                         "Asegúrate de que el paquete exista en 'com.diagramas.modulos." + tipoDiagrama.toLowerCase() + "'"
                 );
         }
+        return null;
     }
 }
