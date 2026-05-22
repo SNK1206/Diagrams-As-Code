@@ -1,0 +1,25 @@
+// Prueba del modulo BD con elementos estructurales nuevos
+autor "DBA Principal";
+exportar "esquema_db.png";
+diagrama BD;
+
+esquema Ventas {
+    region: VARCHAR;
+}
+
+tabla Clientes {
+    id_cliente: INT PK;
+    nombre: VARCHAR;
+    credito: DECIMAL;
+}
+
+vista ClientesVIP {
+    id_cliente: INT;
+    nivel: VARCHAR;
+}
+
+procedimiento ActualizarCredito;
+secuencia SeqClientes;
+
+Ventas relaciona Clientes;
+Clientes relaciona ClientesVIP;

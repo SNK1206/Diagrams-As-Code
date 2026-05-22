@@ -37,7 +37,7 @@ public class MainFX extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("⚡ IDE Pedagógico: Análisis Interno e Integración de Archivos");
+        primaryStage.setTitle("Diagrams As Code");
 
         // --- 1. BARRA DE HERRAMIENTAS (TOP) ---
         HBox toolbar = new HBox(15);
@@ -50,20 +50,20 @@ public class MainFX extends Application {
         lblTitulo.setFont(Font.font("System", FontWeight.BOLD, 16));
 
         // NUEVO: Botón para crear un lienzo/archivo en blanco
-        Button btnNuevo = new Button("➕ Nuevo");
+        Button btnNuevo = new Button("Nuevo");
         btnNuevo.setStyle("-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-weight: bold;");
         btnNuevo.setOnAction(e -> crearPestana("sin_titulo_" + (contadorNuevos++) + ".dac", "diagrama Flujo;\n", null));
 
-        Button btnAbrir = new Button("📂 Abrir .dac");
+        Button btnAbrir = new Button("Abrir");
         btnAbrir.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;");
         btnAbrir.setOnAction(e -> abrirArchivo(primaryStage));
 
         // NUEVO: Botón para persistir y guardar los cambios en disco
-        Button btnGuardar = new Button("💾 Guardar");
+        Button btnGuardar = new Button("Guardar");
         btnGuardar.setStyle("-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-weight: bold;");
         btnGuardar.setOnAction(e -> guardarArchivoActual(primaryStage));
 
-        Button btnCompilar = new Button("⚡ Compilar e Inspeccionar");
+        Button btnCompilar = new Button("Compilar e Inspeccionar");
         btnCompilar.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
         btnCompilar.setOnAction(e -> ejecutarCompilador());
 
@@ -84,14 +84,14 @@ public class MainFX extends Application {
         VBox panelAnalisis = new VBox(10);
         panelAnalisis.setPadding(new Insets(10));
 
-        Label lblTokens = new Label("1. Flujo Léxico (Tokens Extracted):");
+        Label lblTokens = new Label("1. Tokens:");
         lblTokens.setStyle("-fx-font-weight: bold; -fx-text-fill: #8e44ad;");
         txtTokens = new TextArea();
         txtTokens.setEditable(false);
         txtTokens.setFont(Font.font("Monospaced", 13));
         VBox.setVgrow(txtTokens, Priority.ALWAYS);
 
-        Label lblSimbolos = new Label("2. Tabla de Símbolos (Memoria del Semántico):");
+        Label lblSimbolos = new Label("2. Tabla de Símbolos:");
         lblSimbolos.setStyle("-fx-font-weight: bold; -fx-text-fill: #d35400;");
         txtSimbolos = new TextArea();
         txtSimbolos.setEditable(false);
@@ -106,7 +106,7 @@ public class MainFX extends Application {
         // --- 4. CONSOLA PEDAGÓGICA (ABAJO) ---
         VBox panelConsola = new VBox(5);
         panelConsola.setPadding(new Insets(10));
-        Label lblConsola = new Label("Consola de Diagnóstico Humano:");
+        Label lblConsola = new Label("Consola:");
         lblConsola.setStyle("-fx-font-weight: bold;");
         txtConsola = new TextArea();
         txtConsola.setEditable(false);
@@ -135,9 +135,9 @@ public class MainFX extends Application {
             try {
                 String contenido = new String(Files.readAllBytes(archivoSeleccionado.toPath()), StandardCharsets.UTF_8);
                 crearPestana(archivoSeleccionado.getName(), contenido, archivoSeleccionado);
-                txtConsola.setText("✅ Archivo '" + archivoSeleccionado.getName() + "' cargado correctamente.");
+                txtConsola.setText("Archivo '" + archivoSeleccionado.getName() + "' cargado correctamente.");
             } catch (IOException ex) {
-                txtConsola.setText("❌ ERROR DE E/S: No se pudo leer el archivo.\nDetalle: " + ex.getMessage());
+                txtConsola.setText("ERROR DE E/S: No se pudo leer el archivo.\nDetalle: " + ex.getMessage());
             }
         }
     }
@@ -243,9 +243,9 @@ public class MainFX extends Application {
         txtSimbolos.setText(sbSimbolos.toString());
 
         if (manejadorErrores.tieneErrores()) {
-            txtConsola.setText("❌ COMPILACIÓN FALLIDA:\n\n" + obtenerErroresString(manejadorErrores));
+            txtConsola.setText("COMPILACIÓN FALLIDA:\n\n" + obtenerErroresString(manejadorErrores));
         } else {
-            txtConsola.setText("✅ COMPILACIÓN EXITOSA de [" + pestañaActiva.getText() + "]\nLas fases Léxica y Sintáctica finalizaron sin anomalías.");
+            txtConsola.setText("COMPILACIÓN EXITOSA de [" + pestañaActiva.getText() + "]");
         }
     }
 

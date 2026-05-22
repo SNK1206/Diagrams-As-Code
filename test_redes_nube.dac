@@ -1,0 +1,11 @@
+diagrama Redes;
+
+// El parser espera: dispositivo [nombre] [tipo] { atributos };
+dispositivo AWS Nube { Region: "us-east-1"; };
+dispositivo DMZ Zona { Seguridad: "Alta"; };
+dispositivo WebServers Cluster { Nodos: "3"; };
+dispositivo Balanceador LoadBalancer { IP: "10.0.0.5"; };
+
+AWS enlaza DMZ;
+DMZ enlaza Balanceador;
+Balanceador enlaza WebServers;

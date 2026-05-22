@@ -1,2 +1,0 @@
-diagrama BD;
-tabla Clientes { id: INT PK; nombre: VARCHAR; }

@@ -1,0 +1,21 @@
+// Prueba integral del modulo de Flujo con Meta-instrucciones
+autor "Ingeniero Maestro";
+version "2.0";
+tema "oscuro";
+diagrama Flujo;
+
+inicio Arrancar;
+entrada LeerDatos "Solicitar usuario y password";
+condicion Validar "Usuario en base de datos?";
+nodo Procesar "Generar token de sesion";
+salida MostrarExito "Bienvenido al sistema";
+parada Bloquear "Demasiados intentos fallidos";
+fin Terminar;
+
+// Lógica de ruteo
+Arrancar conecta LeerDatos;
+LeerDatos conecta Validar;
+Validar conecta Procesar;
+Validar conecta Bloquear;
+Procesar conecta MostrarExito;
+MostrarExito conecta Terminar;
