@@ -22,77 +22,65 @@ public class FlujoParser {
     public RaizFlujoAST parsear() {
         RaizFlujoAST raiz = new RaizFlujoAST();
 
-        // Procesar todos los tokens asignados hasta llegar al Fin de Archivo (EOF)
         while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
             Token tokenActual = tokens.get(pos);
 
             if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR) {
                 String lexema = tokenActual.getLexema();
 
-                // Evaluar palabras clave específicas del lenguaje de flujo
                 if (lexema.equals("inicio")) {
-                    procesarInicio(raiz);
-                } else if (lexema.equals("nodo")) {
-                    procesarNodoProceso(raiz);
+                    procesarNodoSimple(raiz, "inicio");
+                } else if (lexema.equals("fin")) {
+                    procesarNodoSimple(raiz, "fin");
+                } else if (lexema.equals("nodo") || lexema.equals("condicion") || lexema.equals("bucle") || lexema.equals("subproceso")) {
+                    procesarNodoConTexto(raiz, lexema);
                 } else {
-                    // Si no es palabra reservada, asumimos que intenta iniciar una conexión semántica
                     procesarConexionOError(raiz);
                 }
             } else {
-                errores.reportarError(
-                        tokenActual.getLinea(),
-                        "Sintáctico Flujo",
-                        "Token inesperado '" + tokenActual.getLexema() + "'.",
-                        "Asegúrate de iniciar la línea declarando un componente ('inicio', 'nodo') o una conexión."
-                );
+                errores.reportarError(tokenActual.getLinea(), "Sintáctico Flujo", "Token inesperado '" + tokenActual.getLexema() + "'.", "Inicia la línea con una declaración válida (nodo, condicion, etc.) o una conexión.");
                 pos++;
             }
         }
         return raiz;
     }
 
-    private void procesarInicio(RaizFlujoAST raiz) {
+    private void procesarNodoSimple(RaizFlujoAST raiz, String rol) {
         int lineaOriginal = tokens.get(pos).getLinea();
-        pos++; // Consumir 'inicio'
+        pos++; // Consumir palabra clave
 
-        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el identificador del punto de partida.")) {
-            String id = tokens.get(pos).getLexema();
+        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el nombre del identificador después de '" + rol + "'.")) {
+            String nombre = tokens.get(pos).getLexema();
             pos++;
 
-            if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta el ';' al cerrar la declaración de inicio.")) {
+            if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al final de la declaración de '" + nombre + "'.")) {
                 pos++;
-
-                // CONTROL SEMÁNTICO: Registrar en memoria y validar unicidad
-                if (!tabla.registrar(id, "inicio")) {
-                    errores.reportarError(lineaOriginal, "Semántico Flujo", "El identificador '" + id + "' ya se encuentra registrado.", "Usa un nombre diferente para este componente.");
-                } else {
-                    raiz.agregarElemento(new NodoInicio(id));
+                if (!tabla.registrar(nombre, rol)) {
+                    errores.reportarError(lineaOriginal, "Semántico Flujo", "El identificador '" + nombre + "' ya existe.", "Usa un nombre diferente.");
                 }
+                raiz.agregarElemento(new NodoProceso(nombre, "[" + rol.toUpperCase() + "]"));
             }
         }
     }
 
-    private void procesarNodoProceso(RaizFlujoAST raiz) {
+    private void procesarNodoConTexto(RaizFlujoAST raiz, String rol) {
         int lineaOriginal = tokens.get(pos).getLinea();
-        pos++; // Consumir 'nodo'
+        pos++; // Consumir palabra clave (nodo, condicion, bucle, subproceso)
 
-        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el identificador del nodo.")) {
-            String id = tokens.get(pos).getLexema();
+        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el nombre del identificador.")) {
+            String nombre = tokens.get(pos).getLexema();
             pos++;
 
-            if (validarSiguienteTipo(Token.Tipo.TEXTO_LITERAL, "Falta la descripción del nodo. Debe ir entre comillas dobles (\"\").")) {
-                String descripcion = tokens.get(pos).getLexema();
+            if (validarSiguienteTipo(Token.Tipo.TEXTO_LITERAL, "Falta la descripción entre comillas para la instrucción '" + rol + "'.")) {
+                String texto = tokens.get(pos).getLexema();
                 pos++;
 
-                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta el ';' al cerrar la definición del nodo.")) {
+                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al final de la línea.")) {
                     pos++;
-
-                    // CONTROL SEMÁNTICO: Evitar colisiones de nombres
-                    if (!tabla.registrar(id, "nodo")) {
-                        errores.reportarError(lineaOriginal, "Semántico Flujo", "El identificador '" + id + "' ya está ocupado.", "Intenta renombrar el nodo.");
-                    } else {
-                        raiz.agregarElemento(new NodoProceso(id, descripcion));
+                    if (!tabla.registrar(nombre, rol)) {
+                        errores.reportarError(lineaOriginal, "Semántico Flujo", "El identificador '" + nombre + "' ya está registrado.", "Cambia el nombre para evitar colisiones.");
                     }
+                    raiz.agregarElemento(new NodoProceso(nombre, "[" + rol.toUpperCase() + "] " + texto));
                 }
             }
         }
@@ -101,57 +89,46 @@ public class FlujoParser {
     private void procesarConexionOError(RaizFlujoAST raiz) {
         Token tOrigen = tokens.get(pos);
         String idOrigen = tOrigen.getLexema();
-        pos++; // Consumir posible identificador origen
+        pos++;
 
-        // Validar si el conector semántico del módulo es correcto
         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR && tokens.get(pos).getLexema().equals("conecta")) {
-            pos++; // Consumir conector 'conecta'
+            pos++; // Consumir 'conecta'
 
-            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el identificador del nodo destino en la conexión.")) {
+            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el elemento destino para la conexión.")) {
                 String idDestino = tokens.get(pos).getLexema();
                 pos++;
 
-                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta el ';' al finalizar la instrucción de enlace.")) {
+                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al finalizar la instrucción de conexión.")) {
                     pos++;
 
-                    // CONTROL SEMÁNTICO CRÍTICO: ¿Existen ambos nodos en la Tabla de Símbolos?
                     if (!tabla.existe(idOrigen)) {
-                        errores.reportarError(tOrigen.getLinea(), "Semántico Flujo", "El origen '" + idOrigen + "' no existe en el diagrama.", "Declara el componente antes con 'inicio' o 'nodo'.");
+                        errores.reportarError(tOrigen.getLinea(), "Semántico Flujo", "El origen '" + idOrigen + "' no ha sido declarado.", "Declara el elemento antes de conectarlo.");
                     } else if (!tabla.existe(idDestino)) {
-                        errores.reportarError(tOrigen.getLinea(), "Semántico Flujo", "El destino '" + idDestino + "' no está registrado.", "Verifica errores de dedo o declara el nodo de destino.");
+                        errores.reportarError(tOrigen.getLinea(), "Semántico Flujo", "El destino '" + idDestino + "' no ha sido declarado.", "Declara el elemento de destino antes de conectarlo.");
                     } else {
                         raiz.agregarElemento(new NodoConexion(idOrigen, idDestino));
                     }
                 }
             }
         } else {
-            // Manejo pedagógico en caso de sintaxis rota
-            errores.reportarError(
-                    tOrigen.getLinea(),
-                    "Sintáctico Flujo",
-                    "Instrucción no válida o verbo incorrecto en '" + idOrigen + "'.",
-                    "Para entrelazar flujos de manera legible usa el verbo conector 'conecta' (Ej: NodoA conecta NodoB;)"
-            );
-            recuperacionPanico();
+            errores.reportarError(tOrigen.getLinea(), "Sintáctico Flujo", "Instrucción o verbo inválido en '" + idOrigen + "'.", "Si deseas conectar elementos utiliza el verbo exclusivo 'conecta'.");
+            recuperarPanico();
         }
     }
 
     private boolean validarSiguienteTipo(Token.Tipo esperado, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
             int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
-            errores.reportarError(l, "Sintáctico Flujo", mensajeError, "Verifica el orden de los parámetros según los ejemplos de la guía.");
+            errores.reportarError(l, "Sintáctico Flujo", mensajeError, "Revisa la sintaxis del diagrama.");
             return false;
         }
         return true;
     }
 
-    private void recuperacionPanico() {
-        // Sincronizar el parser saltando tokens hasta el próximo fin de instrucción ';' para no encadenar falsas alarmas
+    private void recuperarPanico() {
         while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
             pos++;
         }
-        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) {
-            pos++;
-        }
+        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
     }
 }

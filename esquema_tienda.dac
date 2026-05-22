@@ -1,0 +1,27 @@
+diagrama BD;
+
+tabla Clientes {
+    id: INT PK;
+    email: VARCHAR;
+    telefono: INT;
+}
+
+tabla Pedidos {
+    id: INT PK;
+    cliente_id: INT FK;
+    fecha: DATE;
+}
+
+tabla Productos {
+    codigo: INT PK;
+    precio: DECIMAL;
+}
+
+tabla DetallePedido {
+    pedido_id: INT FK;
+    producto_codigo: INT FK;
+}
+
+Clientes relaciona Pedidos;
+Pedidos relaciona DetallePedido;
+Productos relaciona DetallePedido;

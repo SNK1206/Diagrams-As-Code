@@ -33,7 +33,18 @@ public class LexerBase {
                 continue;
             }
 
-            // 2. Signos de puntuación de un solo carácter
+            // --- NUEVO: 2. Manejo de Comentarios (Absorción Léxica) ---
+            // Soporta comentarios estilo Java (//) o estilo Script (#)
+            if (actual == '#' || (actual == '/' && indice + 1 < codigo.length() && codigo.charAt(indice + 1) == '/')) {
+                // Avanzamos el índice velozmente hasta encontrar un salto de línea (fin del comentario)
+                while (indice < codigo.length() && codigo.charAt(indice) != '\n') {
+                    indice++;
+                }
+                continue; // Volvemos al inicio del bucle (el \n se procesará en la siguiente vuelta)
+            }
+            // -----------------------------------------------------------
+
+            // 3. Signos de puntuación de un solo carácter
             if (actual == ';') {
                 tokens.add(new Token(Token.Tipo.PUNTO_Y_COMA, ";", lineaActual));
                 indice++;
@@ -55,7 +66,7 @@ public class LexerBase {
                 continue;
             }
 
-            // 3. Cadenas de texto literales (entre comillas)
+            // 4. Cadenas de texto literales (entre comillas)
             if (actual == '"') {
                 StringBuilder sb = new StringBuilder();
                 indice++; // Saltar la comilla de apertura
@@ -72,7 +83,7 @@ public class LexerBase {
                 continue;
             }
 
-            // 4. Identificadores y Palabras Clave
+            // 5. Identificadores y Palabras Clave
             if (Character.isLetter(actual) || actual == '_') {
                 StringBuilder sb = new StringBuilder();
                 while (indice < codigo.length() && (Character.isLetterOrDigit(codigo.charAt(indice)) || codigo.charAt(indice) == '_')) {
@@ -89,7 +100,7 @@ public class LexerBase {
                 continue;
             }
 
-            // 5. Captura pedagógica de caracteres inválidos
+            // 6. Captura pedagógica de caracteres inválidos (Errores Léxicos)
             manejadorErrores.reportarErrorLéxico(lineaActual, actual);
             indice++;
         }

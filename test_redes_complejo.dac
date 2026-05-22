@@ -1,0 +1,13 @@
+// Topologia corporativa mas compleja con multiples atributos
+diagrama Redes;
+
+dispositivo FirewallCorp Firewall { Zona: "DMZ"; };
+dispositivo RouterWAN Router { IP: "200.4.12.9"; };
+dispositivo SwitchLAN Switch;
+dispositivo DBServer Servidor { SO: "Linux"; RAM: "32GB"; };
+dispositivo AdminPC Workstation { OS: "Windows11"; };
+
+RouterWAN enlaza FirewallCorp;
+FirewallCorp enlaza SwitchLAN;
+SwitchLAN enlaza DBServer;
+SwitchLAN enlaza AdminPC;

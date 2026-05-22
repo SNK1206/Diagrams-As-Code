@@ -1,0 +1,9 @@
+// Topologia de red basica valida
+diagrama Redes;
+
+dispositivo RouterPrincipal Router { IP: "192.168.1.1"; };
+dispositivo SwitchCore Switch;
+dispositivo ServidorWeb Servidor { IP: "192.168.1.10"; Puerto: "80"; };
+
+RouterPrincipal enlaza SwitchCore;
+SwitchCore enlaza ServidorWeb;

@@ -95,6 +95,15 @@ public class ParserBase {
                     return astBD;
                 }
                 break;
+            case "redes":
+                com.diagramas.modulos.redes.RedesParser parserRedes =
+                        new com.diagramas.modulos.redes.RedesParser(tokensRestantes, tablaSimbolos, manejadorErrores);
+                com.diagramas.modulos.redes.ast.RaizRedesAST astRedes = parserRedes.parsear();
+                if (!manejadorErrores.tieneErrores()) {
+                    System.out.println(astRedes);
+                    return astRedes;
+                }
+                break;
 
             default:
                 manejadorErrores.reportarError(

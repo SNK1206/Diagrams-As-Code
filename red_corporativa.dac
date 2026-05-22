@@ -1,0 +1,18 @@
+diagrama Redes;
+
+dispositivo ServidorCentral Servidor { 
+    IP: "10.0.0.1"; 
+    RAM: "64GB"; 
+};
+
+dispositivo RouterPrincipal Router { 
+    Gateway: "10.0.0.254"; 
+};
+
+dispositivo PcAdmin Workstation { 
+    Usuario: "Admin"; 
+};
+
+// Verbos de enlace
+PcAdmin enlaza RouterPrincipal;
+RouterPrincipal enlaza ServidorCentral;

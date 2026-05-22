@@ -1,0 +1,11 @@
+// Prueba de errores para el modulo de Redes
+diagrama Redes;
+
+dispositivo Router1 Router;
+dispositivo Switch1 Switch;
+
+# Error Semantico: PC1 no ha sido declarado
+Router1 enlaza PC1;
+
+# Error Sintactico: usa el verbo 'conecta' (modulo flujo) en lugar de 'enlaza'
+Router1 conecta Switch1;
