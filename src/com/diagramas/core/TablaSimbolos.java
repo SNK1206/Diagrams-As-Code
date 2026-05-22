@@ -4,46 +4,42 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class TablaSimbolos {
-    // Almacena: Identificador -> Tipo de Elemento (ej: "Usuarios" -> "tabla")
-    private final Map<String, String> tabla;
-    private String contextoActivo;
+    // Estructura para guardar: Nombre -> Rol/Tipo
+    private final Map<String, String> simbolos = new HashMap<>();
 
-    public TablaSimbolos() {
-        this.tabla = new HashMap<>();
-        this.contextoActivo = "GLOBAL";
+    // NUEVO: Variable para recordar qué diagrama está activo
+    private String contextoActivo = "Ninguno";
+
+    // NUEVO: El método que invoca el ParserBase
+    public void bloquearContexto(String contexto) {
+        this.contextoActivo = contexto;
+        System.out.println("🔒 [TABLA DE SÍMBOLOS] Contexto bloqueado exclusivamente para: " + contexto);
     }
 
-    public void setContextoActivo(String contexto) {
-        this.contextoActivo = contexto;
+    public boolean registrar(String nombre, String rol) {
+        if (simbolos.containsKey(nombre)) {
+            return false; // Ya existe, error semántico de duplicado
+        }
+        simbolos.put(nombre, rol);
+        System.out.println("📝 [TABLA] Registrado: " + nombre + " con rol [" + rol + "] en contexto [" + contextoActivo + "]");
+        return true;
+    }
+
+    public boolean existe(String nombre) {
+        return simbolos.containsKey(nombre);
+    }
+
+    public void limpiar() {
+        simbolos.clear();
+        contextoActivo = "Ninguno";
+    }
+
+    // Para pintar en el panel derecho del IDE
+    public Map<String, String> getSimbolos() {
+        return simbolos;
     }
 
     public String getContextoActivo() {
         return contextoActivo;
-    }
-
-    public boolean registrar(String id, String tipoElemento) {
-        if (tabla.containsKey(id)) {
-            return false; // Elemento duplicado
-        }
-        tabla.put(id, tipoElemento);
-        return true;
-    }
-
-    public boolean existe(String id) {
-        return tabla.containsKey(id);
-    }
-
-    public String obtenerTipo(String id) {
-        return tabla.get(id);
-    }
-
-    public void limpiar() {
-        tabla.clear();
-        contextoActivo = "GLOBAL";
-    }
-
-    // --- NUEVO: MÉTODO PARA EXTRACCIÓN HACIA LA INTERFAZ ---
-    public Map<String, String> getElementos() {
-        return tabla;
     }
 }

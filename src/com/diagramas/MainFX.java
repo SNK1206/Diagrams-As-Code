@@ -237,7 +237,7 @@ public class MainFX extends Application {
         sbSimbolos.append(String.format("%-25s | %-15s\n", "IDENTIFICADOR ENCONTRADO", "TIPO/ROL ASIGNADO"));
         sbSimbolos.append("----------------------------------------------------\n");
 
-        for (Map.Entry<String, String> entry : tablaSimbolos.getElementos().entrySet()) {
+        for (Map.Entry<String, String> entry : tablaSimbolos.getSimbolos().entrySet()) {
             sbSimbolos.append(String.format("%-25s | %-15s\n", entry.getKey(), entry.getValue()));
         }
         txtSimbolos.setText(sbSimbolos.toString());

@@ -32,7 +32,10 @@ public class FlujoParser {
                     procesarNodoSimple(raiz, "inicio");
                 } else if (lexema.equals("fin")) {
                     procesarNodoSimple(raiz, "fin");
-                } else if (lexema.equals("nodo") || lexema.equals("condicion") || lexema.equals("bucle") || lexema.equals("subproceso")) {
+                } else if (lexema.equals("nodo") || lexema.equals("condicion") || lexema.equals("bucle") ||
+                        lexema.equals("subproceso") || lexema.equals("entrada") ||
+                        lexema.equals("salida") || lexema.equals("parada")) {
+                    // ¡Un solo método procesa dinámicamente las 7 instrucciones!
                     procesarNodoConTexto(raiz, lexema);
                 } else {
                     procesarConexionOError(raiz);

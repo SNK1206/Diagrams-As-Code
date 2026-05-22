@@ -28,8 +28,13 @@ public class RedesParser {
             if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR) {
                 String lexema = tokenActual.getLexema();
 
-                if (lexema.equals("dispositivo")) {
-                    procesarDispositivo(raiz);
+                if (lexema.equals("dispositivo") || lexema.equals("nube") ||
+                        lexema.equals("vlan") || lexema.equals("subred") ||
+                        lexema.equals("cluster") || lexema.equals("tunel") ||
+                        lexema.equals("zona") || lexema.equals("puerto") ||
+                        lexema.equals("politica")) {
+
+                    procesarComponenteRed(raiz, lexema); // <-- Renombra tu método a procesarComponenteRed y pásale el lexema
                 } else {
                     procesarEnlace(raiz);
                 }
@@ -41,7 +46,7 @@ public class RedesParser {
         return raiz;
     }
 
-    private void procesarDispositivo(RaizRedesAST raiz) {
+    private void procesarComponenteRed(RaizRedesAST raiz, String rol) {
         int lineaOriginal = tokens.get(pos).getLinea();
         pos++; // Consumir 'dispositivo'
 

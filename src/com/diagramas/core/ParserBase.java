@@ -1,118 +1,105 @@
 package com.diagramas.core;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ParserBase {
     private final List<Token> tokens;
     private final TablaSimbolos tablaSimbolos;
     private final ManejadorErrores manejadorErrores;
-    private int posicion;
+    private int pos;
 
     public ParserBase(List<Token> tokens, TablaSimbolos tablaSimbolos, ManejadorErrores manejadorErrores) {
         this.tokens = tokens;
         this.tablaSimbolos = tablaSimbolos;
         this.manejadorErrores = manejadorErrores;
-        this.posicion = 0;
+        this.pos = 0;
     }
 
-    // AHORA RETORNA EL AST GENERADO (Object para dar soporte polimórfico a cualquier diagrama)
-    public Object analizarCabecera() {
-        if (tokens.isEmpty() || tokens.get(0).getTipo() == Token.Tipo.EOF) {
-            manejadorErrores.reportarError(1, "Parser Base", "El archivo .dac está completamente vacío.", "Escriba la instrucción de cabecera: 'diagrama [Tipo];'");
-            return null;
+    public void analizarCabecera() {
+        boolean diagramaEncontrado = false;
+
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            Token t = tokens.get(pos);
+
+            // Evaluamos si el token es un identificador genérico o la palabra reservada 'diagrama'
+            if (t.getTipo() == Token.Tipo.IDENTIFICADOR || t.getTipo() == Token.Tipo.PR_DIAGRAMA) {
+                String lexema = t.getLexema();
+
+                // 1. INTERCEPTAR META-INSTRUCCIONES DEL NÚCLEO
+                if (lexema.equals("autor") || lexema.equals("version") ||
+                        lexema.equals("tema") || lexema.equals("exportar") || lexema.equals("importar")) {
+
+                    pos++; // Consumir la palabra clave
+                    if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.TEXTO_LITERAL) {
+                        String valor = tokens.get(pos).getLexema();
+                        System.out.println("⚙️ [NÚCLEO] Meta-Instrucción procesada: " + lexema + " -> " + valor);
+                        pos++; // Consumir el valor entre comillas
+
+                        // Consumir el punto y coma (;) obligatorio
+                        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) {
+                            pos++;
+                        } else {
+                            manejadorErrores.reportarError(t.getLinea(), "Sintáctico Núcleo", "Falta ';' al final de la instrucción '" + lexema + "'.", "Añade un punto y coma.");
+                        }
+                        continue; // Volver al inicio del bucle para leer la siguiente línea
+                    } else {
+                        manejadorErrores.reportarError(t.getLinea(), "Sintáctico Núcleo", "Se esperaba un texto entre comillas después de '" + lexema + "'.", "Usa comillas dobles para el valor.");
+                        pos++;
+                        continue;
+                    }
+                }
+                // 2. PROCESAR LA CABECERA DEL DIAGRAMA
+                else if (lexema.equals("diagrama")) {
+                    pos++; // Consumir 'diagrama'
+
+                    if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR) {
+                        String tipoDiagrama = tokens.get(pos).getLexema().toLowerCase();
+                        pos++;
+
+                        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) {
+                            pos++; // Consumir ';'
+
+                            // Bloquear la tabla de símbolos para el ecosistema específico
+                            tablaSimbolos.bloquearContexto(tipoDiagrama.substring(0, 1).toUpperCase() + tipoDiagrama.substring(1));
+
+                            // Recortar los tokens restantes y enviarlos al submódulo
+                            List<Token> tokensRestantes = new ArrayList<>(tokens.subList(pos, tokens.size()));
+                            delegarAlModulo(tipoDiagrama, tokensRestantes);
+
+                            diagramaEncontrado = true;
+                            break; // Romper el bucle del núcleo, el submódulo toma el control total
+                        } else {
+                            manejadorErrores.reportarError(t.getLinea(), "Sintáctico", "Falta ';' en la cabecera.", "Termina la declaración con punto y coma.");
+                        }
+                    } else {
+                        manejadorErrores.reportarError(t.getLinea(), "Sintáctico", "Falta el tipo de diagrama.", "Especifica 'Flujo', 'BD' o 'Redes'.");
+                    }
+                    break;
+                }
+            }
+            pos++;
         }
 
-        Token tokenActual = tokens.get(posicion);
-
-        if (tokenActual.getTipo() != Token.Tipo.PR_DIAGRAMA) {
-            manejadorErrores.reportarError(
-                    tokenActual.getLinea(),
-                    "Parser Base",
-                    "Falta la cabecera obligatoria del lenguaje.",
-                    "Todo archivo .dac debe iniciar estrictamente con la palabra clave 'diagrama' (ej. diagrama Flujo;)."
-            );
-            return null;
+        if (!diagramaEncontrado && !manejadorErrores.tieneErrores()) {
+            manejadorErrores.reportarError(1, "Sintáctico", "No se encontró la cabecera principal.", "Asegúrate de incluir 'diagrama [Tipo];' en el archivo.");
         }
-
-        posicion++;
-        Token tokenTipo = tokens.get(posicion);
-
-        if (tokenTipo.getTipo() != Token.Tipo.IDENTIFICADOR) {
-            manejadorErrores.reportarError(
-                    tokenTipo.getLinea(),
-                    "Parser Base",
-                    "Se esperaba el tipo de diagrama.",
-                    "Especifique un contexto válido después de la palabra 'diagrama' (ej. Flujo, BD, Redes)."
-            );
-            return null;
-        }
-
-        posicion++;
-        Token tokenPuntoYComa = tokens.get(posicion);
-
-        if (tokenPuntoYComa.getTipo() != Token.Tipo.PUNTO_Y_COMA) {
-            manejadorErrores.reportarError(
-                    tokenPuntoYComa.getLinea(),
-                    "Parser Base",
-                    "Falta el punto y coma ';' al final de la cabecera.",
-                    "Coloque un ';' inmediatamente después del nombre del tipo de diagrama."
-            );
-            return null;
-        }
-
-        posicion++; // Consumir el ';'
-
-        String tipoDiagrama = tokenTipo.getLexema();
-        tablaSimbolos.setContextoActivo(tipoDiagrama);
-        System.out.println("🔒 [ParserBase] Contexto '" + tipoDiagrama + "' bloqueado de manera estricta.");
-
-        return delegarAlModulo(tipoDiagrama);
     }
 
-    private Object delegarAlModulo(String tipoDiagrama) {
-        List<Token> tokensRestantes = tokens.subList(posicion, tokens.size());
-
-        switch (tipoDiagrama.toLowerCase()) {
+    private Object delegarAlModulo(String tipoDiagrama, List<Token> tokensRestantes) {
+        switch (tipoDiagrama) {
             case "flujo":
-                com.diagramas.modulos.flujo.FlujoParser parserFlujo =
-                        new com.diagramas.modulos.flujo.FlujoParser(tokensRestantes, tablaSimbolos, manejadorErrores);
-
-                com.diagramas.modulos.flujo.ast.RaizFlujoAST ast = parserFlujo.parsear();
-
-                if (!manejadorErrores.tieneErrores()) {
-                    System.out.println(ast);
-                    return ast; // Retornamos el AST para que la GUI lo grafique
-                }
-                break;
-
+                com.diagramas.modulos.flujo.FlujoParser parserFlujo = new com.diagramas.modulos.flujo.FlujoParser(tokensRestantes, tablaSimbolos, manejadorErrores);
+                return parserFlujo.parsear();
             case "bd":
-                com.diagramas.modulos.bd.BDParser parserBD =
-                        new com.diagramas.modulos.bd.BDParser(tokensRestantes, tablaSimbolos, manejadorErrores);
-                com.diagramas.modulos.bd.ast.RaizBDAST astBD = parserBD.parsear();
-
-                if (!manejadorErrores.tieneErrores()) {
-                    System.out.println(astBD);
-                    return astBD;
-                }
-                break;
+                com.diagramas.modulos.bd.BDParser parserBD = new com.diagramas.modulos.bd.BDParser(tokensRestantes, tablaSimbolos, manejadorErrores);
+                return parserBD.parsear();
             case "redes":
-                com.diagramas.modulos.redes.RedesParser parserRedes =
-                        new com.diagramas.modulos.redes.RedesParser(tokensRestantes, tablaSimbolos, manejadorErrores);
-                com.diagramas.modulos.redes.ast.RaizRedesAST astRedes = parserRedes.parsear();
-                if (!manejadorErrores.tieneErrores()) {
-                    System.out.println(astRedes);
-                    return astRedes;
-                }
-                break;
-
+                com.diagramas.modulos.redes.RedesParser parserRedes = new com.diagramas.modulos.redes.RedesParser(tokensRestantes, tablaSimbolos, manejadorErrores);
+                return parserRedes.parsear();
             default:
-                manejadorErrores.reportarError(
-                        1,
-                        "Infraestructura",
-                        "El módulo para '" + tipoDiagrama + "' no está dado de alta en el ecosistema.",
-                        "Asegúrate de que el paquete exista en 'com.diagramas.modulos." + tipoDiagrama.toLowerCase() + "'"
-                );
+                manejadorErrores.reportarError(1, "Semántico", "Módulo '" + tipoDiagrama + "' no reconocido.", "Los módulos válidos son: Flujo, BD, Redes.");
+                return null;
         }
-        return null;
     }
 }

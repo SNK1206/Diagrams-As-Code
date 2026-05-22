@@ -29,9 +29,14 @@ public class BDParser {
             if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR) {
                 String lexema = tokenActual.getLexema();
 
-                if (lexema.equals("tabla") || lexema.equals("vista")) {
+                if (lexema.equals("tabla") || lexema.equals("vista") ||
+                        lexema.equals("esquema") || lexema.equals("paquete")) {
+                    // Bloques que requieren llaves { } y atributos internos
                     procesarBloqueComplejo(raiz, lexema);
-                } else if (lexema.equals("procedimiento") || lexema.equals("indice") || lexema.equals("disparador")) {
+                } else if (lexema.equals("procedimiento") || lexema.equals("indice") ||
+                        lexema.equals("disparador") || lexema.equals("secuencia") ||
+                        lexema.equals("funcion")) {
+                    // Componentes lineales sin llaves
                     procesarComponenteLineal(raiz, lexema);
                 } else {
                     procesarRelacion(raiz);
