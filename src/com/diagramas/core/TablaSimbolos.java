@@ -41,4 +41,9 @@ public class TablaSimbolos {
         tabla.clear();
         contextoActivo = "GLOBAL";
     }
+
+    // --- NUEVO: MÉTODO PARA EXTRACCIÓN HACIA LA INTERFAZ ---
+    public Map<String, String> getElementos() {
+        return tabla;
+    }
 }

@@ -1,7 +1,6 @@
 package com.diagramas;
 
 import com.diagramas.core.*;
-import com.diagramas.modulos.flujo.ast.*;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -9,21 +8,26 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.util.HashMap;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 
 public class MainFX extends Application {
 
-    private TextArea txtEditor;
+    private TabPane panelPestanas;
     private TextArea txtConsola;
-    private Pane lienzoDibujo;
+
+    // Nuevas áreas para visualizar el interior del compilador
+    private TextArea txtTokens;
+    private TextArea txtSimbolos;
 
     public static void main(String[] args) {
         launch(args);
@@ -31,7 +35,7 @@ public class MainFX extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("⚡ IDE Pedagógico: Diagrams as Code");
+        primaryStage.setTitle("⚡ IDE Pedagógico: Análisis Interno (Tokens y Memoria)");
 
         // --- 1. BARRA DE HERRAMIENTAS (TOP) ---
         HBox toolbar = new HBox(15);
@@ -43,44 +47,56 @@ public class MainFX extends Application {
         lblTitulo.setTextFill(Color.WHITE);
         lblTitulo.setFont(Font.font("System", FontWeight.BOLD, 16));
 
-        Button btnCompilar = new Button("⚡ Compilar y Renderizar");
+        Button btnAbrir = new Button("📂 Abrir .dac");
+        btnAbrir.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnAbrir.setOnAction(e -> abrirArchivo(primaryStage));
+
+        Button btnCompilar = new Button("⚡ Compilar e Inspeccionar");
         btnCompilar.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnCompilar.setOnAction(e -> ejecutarCompiladorYRenderizado());
+        btnCompilar.setOnAction(e -> ejecutarCompilador());
 
-        toolbar.getChildren().addAll(lblTitulo, btnCompilar);
+        toolbar.getChildren().addAll(lblTitulo, btnAbrir, btnCompilar);
 
-        // --- 2. EDITOR DE CÓDIGO (CENTRO - IZQUIERDA) ---
+        // --- 2. EDITOR DE CÓDIGO CON PESTAÑAS (IZQUIERDA) ---
         VBox panelEditor = new VBox(5);
         panelEditor.setPadding(new Insets(10));
-        Label lblEditor = new Label("Editor de Código (.dac):");
+        Label lblEditor = new Label("Archivos Abiertos:");
         lblEditor.setStyle("-fx-font-weight: bold;");
-        txtEditor = new TextArea();
-        txtEditor.setFont(Font.font("Monospaced", 14));
-        // Código inicial de ejemplo para facilitar las pruebas del estudiante
-        txtEditor.setText("diagrama Flujo;\ninicio Comenzar;\nnodo LeerDatos \"Leer credenciales\";\nnodo Validar \"Verificar base de datos\";\nComenzar conecta LeerDatos;\nLeerDatos conecta Validar;");
-        VBox.setVgrow(txtEditor, Priority.ALWAYS);
-        panelEditor.getChildren().addAll(lblEditor, txtEditor);
 
-        // --- 3. LIENZO GRÁFICO (CENTRO - DERECHA) ---
-        VBox panelLienzo = new VBox(5);
-        panelLienzo.setPadding(new Insets(10));
-        Label lblLienzo = new Label("Renderizado del Diagrama:");
-        lblLienzo.setStyle("-fx-font-weight: bold;");
+        panelPestanas = new TabPane();
+        VBox.setVgrow(panelPestanas, Priority.ALWAYS);
 
-        lienzoDibujo = new Pane();
-        lienzoDibujo.setStyle("-fx-background-color: #ffffff; -fx-border-color: #bdc3c7; -fx-border-radius: 5;");
+        String codigoEjemplo = "diagrama Flujo;\ninicio Comenzar;\nnodo LeerDatos \"Leer credenciales\";\nnodo Validar \"Verificar base de datos\";\nComenzar conecta LeerDatos;\nLeerDatos conecta Validar;";
+        crearPestana("ejemplo.dac", codigoEjemplo);
 
-        ScrollPane scrollLienzo = new ScrollPane(lienzoDibujo);
-        scrollLienzo.setFitToWidth(true);
-        scrollLienzo.setFitToHeight(true);
-        VBox.setVgrow(scrollLienzo, Priority.ALWAYS);
-        panelLienzo.getChildren().addAll(lblLienzo, scrollLienzo);
+        panelEditor.getChildren().addAll(lblEditor, panelPestanas);
 
-        // Dividir editor y lienzo simétricamente
-        SplitPane splitCentro = new SplitPane(panelEditor, panelLienzo);
-        splitCentro.setDividerPositions(0.4f);
+        // --- 3. PANEL DE ANÁLISIS INTERNO (DERECHA) ---
+        VBox panelAnalisis = new VBox(10);
+        panelAnalisis.setPadding(new Insets(10));
 
-        // --- 4. CONSOLA PEDAGÓGICA (BOTTOM) ---
+        // 3.1 Sub-panel para Tokens
+        Label lblTokens = new Label("1. Flujo Léxico (Tokens Extracted):");
+        lblTokens.setStyle("-fx-font-weight: bold; -fx-text-fill: #8e44ad;");
+        txtTokens = new TextArea();
+        txtTokens.setEditable(false);
+        txtTokens.setFont(Font.font("Monospaced", 13));
+        VBox.setVgrow(txtTokens, Priority.ALWAYS);
+
+        // 3.2 Sub-panel para Tabla de Símbolos
+        Label lblSimbolos = new Label("2. Tabla de Símbolos (Memoria del Semántico):");
+        lblSimbolos.setStyle("-fx-font-weight: bold; -fx-text-fill: #d35400;");
+        txtSimbolos = new TextArea();
+        txtSimbolos.setEditable(false);
+        txtSimbolos.setFont(Font.font("Monospaced", 13));
+        VBox.setVgrow(txtSimbolos, Priority.ALWAYS);
+
+        panelAnalisis.getChildren().addAll(lblTokens, txtTokens, lblSimbolos, txtSimbolos);
+
+        SplitPane splitCentro = new SplitPane(panelEditor, panelAnalisis);
+        splitCentro.setDividerPositions(0.45f);
+
+        // --- 4. CONSOLA PEDAGÓGICA (ABAJO) ---
         VBox panelConsola = new VBox(5);
         panelConsola.setPadding(new Insets(10));
         Label lblConsola = new Label("Consola de Diagnóstico Humano:");
@@ -97,17 +113,54 @@ public class MainFX extends Application {
         root.setCenter(splitCentro);
         root.setBottom(panelConsola);
 
-        Scene scene = new Scene(root, 1000, 650);
+        Scene scene = new Scene(root, 1100, 700);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
-    private void ejecutarCompiladorYRenderizado() {
-        // Limpiar pantallas previas
-        lienzoDibujo.getChildren().clear();
+    private void abrirArchivo(Stage stage) {
+        FileChooser explorador = new FileChooser();
+        explorador.setTitle("Abrir archivo Diagrams As Code");
+        explorador.getExtensionFilters().add(new FileChooser.ExtensionFilter("Archivos DAC (*.dac)", "*.dac"));
+
+        File archivoSeleccionado = explorador.showOpenDialog(stage);
+
+        if (archivoSeleccionado != null) {
+            try {
+                String contenido = new String(Files.readAllBytes(archivoSeleccionado.toPath()), StandardCharsets.UTF_8);
+                crearPestana(archivoSeleccionado.getName(), contenido);
+                txtConsola.setText("✅ Archivo '" + archivoSeleccionado.getName() + "' cargado correctamente en memoria.");
+            } catch (IOException ex) {
+                txtConsola.setText("❌ ERROR DE E/S: No se pudo leer el archivo.\nDetalle: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void crearPestana(String titulo, String contenido) {
+        Tab nuevaPestana = new Tab(titulo);
+        TextArea areaTexto = new TextArea(contenido);
+        areaTexto.setFont(Font.font("Monospaced", 14));
+
+        nuevaPestana.setContent(areaTexto);
+        panelPestanas.getTabs().add(nuevaPestana);
+        panelPestanas.getSelectionModel().select(nuevaPestana);
+    }
+
+    private void ejecutarCompilador() {
+        // Limpiar análisis previos
+        txtTokens.clear();
+        txtSimbolos.clear();
         txtConsola.clear();
 
-        String codigoFuente = txtEditor.getText();
+        Tab pestañaActiva = panelPestanas.getSelectionModel().getSelectedItem();
+
+        if (pestañaActiva == null) {
+            txtConsola.setText("⚠️ ERROR: No hay ningún archivo abierto para compilar.");
+            return;
+        }
+
+        TextArea txtEditorActual = (TextArea) pestañaActiva.getContent();
+        String codigoFuente = txtEditorActual.getText();
 
         ManejadorErrores manejadorErrores = new ManejadorErrores();
         TablaSimbolos tablaSimbolos = new TablaSimbolos();
@@ -116,134 +169,47 @@ public class MainFX extends Application {
         LexerBase lexer = new LexerBase(codigoFuente, manejadorErrores);
         List<Token> tokens = lexer.tokenizar();
 
+        // Imprimir los Tokens en la pantalla
+        StringBuilder sbTokens = new StringBuilder();
+        for (Token t : tokens) {
+            sbTokens.append(t.toString()).append("\n");
+        }
+        txtTokens.setText(sbTokens.toString());
+
         if (manejadorErrores.tieneErrores()) {
             txtConsola.setText("🛑 PROCESO DETENIDO POR ERRORES LÉXICOS:\n\n" + obtenerErroresString(manejadorErrores));
             return;
         }
 
-        // 2. FASE SINTÁCTICA Y SEMÁNTICA (Core + Módulo)
+        // 2. FASE SINTÁCTICA Y SEMÁNTICA
         ParserBase parserBase = new ParserBase(tokens, tablaSimbolos, manejadorErrores);
-        Object astRoot = parserBase.analizarCabecera();
+        parserBase.analizarCabecera();
 
-        if (manejadorErrores.tieneErrores() || astRoot == null) {
+        // Imprimir la Tabla de Símbolos en la pantalla
+        StringBuilder sbSimbolos = new StringBuilder();
+        sbSimbolos.append("🔒 Contexto Bloqueado: ").append(tablaSimbolos.getContextoActivo()).append("\n\n");
+        sbSimbolos.append(String.format("%-25s | %-15s\n", "IDENTIFICADOR ENCONTRADO", "TIPO/ROL ASIGNADO"));
+        sbSimbolos.append("----------------------------------------------------\n");
+
+        for (Map.Entry<String, String> entry : tablaSimbolos.getElementos().entrySet()) {
+            sbSimbolos.append(String.format("%-25s | %-15s\n", entry.getKey(), entry.getValue()));
+        }
+        txtSimbolos.setText(sbSimbolos.toString());
+
+        // 3. RESULTADO FINAL
+        if (manejadorErrores.tieneErrores()) {
             txtConsola.setText("❌ COMPILACIÓN FALLIDA:\n\n" + obtenerErroresString(manejadorErrores));
-            return;
-        }
-
-        // 3. GENERACIÓN GRÁFICA DESDE EL AST
-        txtConsola.setText("✅ COMPILACIÓN EXITOSA: Estructura base y semántica validadas sin anomalías.\nGenerando vista gráfica desde el AST...");
-
-        if (astRoot instanceof RaizFlujoAST) {
-            graficarDiagramaFlujo((RaizFlujoAST) astRoot);
+        } else {
+            txtConsola.setText("✅ COMPILACIÓN EXITOSA de [" + pestañaActiva.getText() + "]\nLas fases Léxica, Sintáctica y Semántica finalizaron sin anomalías.");
         }
     }
 
-    private void graficarDiagramaFlujo(RaizFlujoAST ast) {
-        // Mapa para guardar las coordenadas del centro de cada componente dibujado
-        Map<String, double[]> posicionesComponentes = new HashMap<>();
-
-        double xInicial = 200;
-        double yInicial = 50;
-        double espaciadoVertical = 100;
-
-        // Primer pasada: Dibujar las figuras geométricas (Entidades del AST)
-        for (NodeAST elemento : ast.getElementos()) {
-            if (elemento instanceof NodoInicio) {
-                NodoInicio nodo = (NodoInicio) elemento;
-
-                // Un inicio se representa con una elipse estilizada
-                Circle circulo = new Circle(xInicial, yInicial, 25);
-                circulo.setFill(Color.web("#e74c3c"));
-                circulo.setStroke(Color.web("#c0392b"));
-                circulo.setStrokeWidth(2);
-
-                Text texto = new Text(nodo.getId());
-                texto.setFont(Font.font("System", FontWeight.BOLD, 12));
-                texto.setFill(Color.WHITE);
-                // Centrar texto
-                texto.setX(xInicial - (texto.getLayoutBounds().getWidth() / 2));
-                texto.setY(yInicial + 4);
-
-                lienzoDibujo.getChildren().addAll(circulo, texto);
-                posicionesComponentes.put(nodo.getId(), new double[]{xInicial, yInicial});
-                yInicial += espaciadoVertical;
-
-            } else if (elemento instanceof NodoProceso) {
-                NodoProceso nodo = (NodoProceso) elemento;
-
-                // Un proceso se representa con un rectángulo estándar de flujo
-                double ancho = 160;
-                double alto = 45;
-                double rx = xInicial - (ancho / 2);
-                double ry = yInicial - (alto / 2);
-
-                Rectangle rect = new Rectangle(rx, ry, ancho, alto);
-                rect.setFill(Color.web("#3498db"));
-                rect.setStroke(Color.web("#2980b9"));
-                rect.setStrokeWidth(2);
-                rect.setArcWidth(10);
-                rect.setArcHeight(10);
-
-                Text tId = new Text(nodo.getId());
-                tId.setFont(Font.font("System", FontWeight.BOLD, 11));
-                tId.setX(xInicial - (tId.getLayoutBounds().getWidth() / 2));
-                tId.setY(yInicial - 4);
-
-                Text tDesc = new Text("\"" + nodo.getDescripcion() + "\"");
-                tDesc.setFont(Font.font("System", 10));
-                tDesc.setX(xInicial - (tDesc.getLayoutBounds().getWidth() / 2));
-                tDesc.setY(yInicial + 12);
-
-                lienzoDibujo.getChildren().addAll(rect, tId, tDesc);
-                posicionesComponentes.put(nodo.getId(), new double[]{xInicial, yInicial});
-                yInicial += espaciadoVertical;
-            }
-        }
-
-        // Segunda pasada: Dibujar los enlaces y flechas conectores desde el AST
-        for (NodeAST elemento : ast.getElementos()) {
-            if (elemento instanceof NodoConexion) {
-                NodoConexion conexion = (NodoConexion) elemento;
-
-                double[] origenCoord = posicionesComponentes.get(conexion.getOrigen());
-                double[] destinoCoord = posicionesComponentes.get(conexion.getDestino());
-
-                if (origenCoord != null && destinoCoord != null) {
-                    // Dibujar línea de interconexión (Ajustando los límites de los componentes)
-                    double x1 = origenCoord[0];
-                    double y1 = origenCoord[1] + 25; // Sale del fondo del nodo anterior
-                    double x2 = destinoCoord[0];
-                    double y2 = destinoCoord[1] - 22; // Entra por el tope del siguiente
-
-                    Line linea = new Line(x1, y1, x2, y2);
-                    linea.setStrokeWidth(2);
-                    linea.setStroke(Color.web("#7f8c8d"));
-
-                    // Punta de la flecha (Triángulo apuntando hacia abajo)
-                    Polygon flecha = new Polygon();
-                    flecha.getPoints().addAll(new Double[]{
-                            x2, y2,
-                            x2 - 6, y2 - 8,
-                            x2 + 6, y2 - 8
-                    });
-                    flecha.setFill(Color.web("#7f8c8d"));
-
-                    lienzoDibujo.getChildren().addAll(linea, flecha);
-                }
-            }
-        }
-    }
-
-    // Metodo auxiliar para transformar los errores impresos en texto de interfaz
     private String obtenerErroresString(ManejadorErrores manejador) {
-        // Redirigimos momentáneamente la salida de impresión a un capturador
         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
         java.io.PrintStream ps = new java.io.PrintStream(baos);
         java.io.PrintStream viejoErr = System.err;
         System.setErr(ps);
-
         manejador.imprimirErrores();
-
         System.setErr(viejoErr);
         return baos.toString();
     }
