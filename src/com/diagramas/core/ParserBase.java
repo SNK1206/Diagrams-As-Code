@@ -86,7 +86,14 @@ public class ParserBase {
                 break;
 
             case "bd":
-                // Instancia futura
+                com.diagramas.modulos.bd.BDParser parserBD =
+                        new com.diagramas.modulos.bd.BDParser(tokensRestantes, tablaSimbolos, manejadorErrores);
+                com.diagramas.modulos.bd.ast.RaizBDAST astBD = parserBD.parsear();
+
+                if (!manejadorErrores.tieneErrores()) {
+                    System.out.println(astBD);
+                    return astBD;
+                }
                 break;
 
             default:

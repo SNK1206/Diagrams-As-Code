@@ -1,0 +1,6 @@
+diagrama Flujo;
+inicio Comenzar;
+nodo LeerDatos "Leer credenciales";
+nodo Validar "Verificar base de datos";
+Comenzar conecta LeerDatos;
+LeerDatos conecta Validar;

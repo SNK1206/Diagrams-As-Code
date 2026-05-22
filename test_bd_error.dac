@@ -1,0 +1,7 @@
+diagrama BD;
+tabla Usuarios {
+    id: INT PK;
+    nombre: VARCHAR;
+}
+# Error semántico: se usa un verbo incorrecto (conecta en lugar de relaciona)
+Usuarios conecta Posts;

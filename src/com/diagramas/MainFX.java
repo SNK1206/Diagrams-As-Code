@@ -200,7 +200,7 @@ public class MainFX extends Application {
         if (manejadorErrores.tieneErrores()) {
             txtConsola.setText("❌ COMPILACIÓN FALLIDA:\n\n" + obtenerErroresString(manejadorErrores));
         } else {
-            txtConsola.setText("✅ COMPILACIÓN EXITOSA de [" + pestañaActiva.getText() + "]\nLas fases Léxica, Sintáctica y Semántica finalizaron sin anomalías.");
+            txtConsola.setText("✅ COMPILACIÓN EXITOSA de [" + pestañaActiva.getText() + "]\nLas fases Léxica y Sintáctica finalizaron sin anomalías.");
         }
     }
 

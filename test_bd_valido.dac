@@ -1,0 +1,12 @@
+diagrama BD;
+tabla Usuarios {
+    id: INT PK;
+    nombre: VARCHAR;
+    correo: VARCHAR;
+}
+tabla Posts {
+    id: INT PK;
+    usuario_id: INT FK;
+    contenido: TEXT;
+}
+Usuarios relaciona Posts;
