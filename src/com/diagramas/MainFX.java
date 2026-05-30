@@ -15,7 +15,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.beans.property.SimpleStringProperty;
 
 import javafx.scene.shape.CubicCurve;
 import javafx.scene.shape.Ellipse;
@@ -87,7 +89,22 @@ public class MainFX extends Application {
         btnArbol.setStyle("-fx-background-color: #16a085; -fx-text-fill: white; -fx-font-weight: bold;");
         btnArbol.setOnAction(e -> mostrarArbolDerivacion());
 
-        toolbar.getChildren().addAll(lblTitulo, btnNuevo, btnAbrir, btnGuardar, btnCompilar, btnErroresLexicos, btnArbol);
+        Region espaciador = new Region();
+        HBox.setHgrow(espaciador, Priority.ALWAYS);
+
+        Button btnSimbologia = new Button("Simbología del Lenguaje");
+        btnSimbologia.setStyle("-fx-background-color: #16a085; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnSimbologia.setOnAction(e -> mostrarTablaSimbologia(primaryStage));
+
+        Button btnManual = new Button("Manual de Usuario");
+        btnManual.setStyle("-fx-background-color: #1a5276; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnManual.setOnAction(e -> mostrarManual(primaryStage, "manual_diagrams_as_code.md", "Manual de Usuario — Diagrams As Code v2.0"));
+
+        Button btnDocs = new Button("Documentación Técnica");
+        btnDocs.setStyle("-fx-background-color: #6c3483; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnDocs.setOnAction(e -> mostrarManual(primaryStage, "documentacion_tecnica.md", "Documentación Técnica — Diagrams As Code"));
+
+        toolbar.getChildren().addAll(lblTitulo, btnNuevo, btnAbrir, btnGuardar, btnCompilar, btnErroresLexicos, btnArbol, espaciador, btnSimbologia, btnManual, btnDocs);
 
         // --- 2. EDITOR DE CÓDIGO CON PESTAÑAS (IZQUIERDA) ---
         VBox panelEditor = new VBox(5);
@@ -874,7 +891,49 @@ public class MainFX extends Application {
             new ErrorLexico("ES33", "Sintáctico",
                 "[Sintáctico Redes] Falta ';' al finalizar la instrucción 'enlaza'"),
             new ErrorLexico("ES34", "Sintáctico",
-                "[Sintáctico Redes] Verbo incorrecto — se esperaba 'enlaza'")
+                "[Sintáctico Redes] Verbo incorrecto — se esperaba 'enlaza'"),
+
+            // ── SINTÁCTICOS — ConceptualParser.java ──────────────────────────
+            new ErrorLexico("ES35", "Sintáctico",
+                "[Sintáctico Conceptual] Token inesperado al inicio de instrucción"),
+            new ErrorLexico("ES36", "Sintáctico",
+                "[Sintáctico Conceptual] Falta el nombre del nodo (concepto, categoria o propiedad)"),
+            new ErrorLexico("ES37", "Sintáctico",
+                "[Sintáctico Conceptual] Falta la descripción entre comillas"),
+            new ErrorLexico("ES38", "Sintáctico",
+                "[Sintáctico Conceptual] Falta ';' al final de la declaración del nodo"),
+            new ErrorLexico("ES39", "Sintáctico",
+                "[Sintáctico Conceptual] Falta el identificador destino en la instrucción de relación"),
+            new ErrorLexico("ES40", "Sintáctico",
+                "[Sintáctico Conceptual] Falta ';' al finalizar la instrucción de relación"),
+            new ErrorLexico("ES42", "Sintáctico",
+                "[Sintáctico Conceptual] Verbo inválido — se esperaba 'agrupa', 'asocia' o 'depende'"),
+
+            // ── SINTÁCTICOS — UMLParser.java ─────────────────────────────────
+            new ErrorLexico("ES43", "Sintáctico",
+                "[Sintáctico UML] Token inesperado al inicio de instrucción"),
+            new ErrorLexico("ES44", "Sintáctico",
+                "[Sintáctico UML] Falta el nombre de la clase, interfaz o enum"),
+            new ErrorLexico("ES45", "Sintáctico",
+                "[Sintáctico UML] Falta '{' para abrir el cuerpo de la clase"),
+            new ErrorLexico("ES46", "Sintáctico",
+                "[Sintáctico UML] Se esperaba 'atributo' o 'metodo' dentro de la clase"),
+            new ErrorLexico("ES47", "Sintáctico",
+                "[Sintáctico UML] Falta el nombre del miembro (atributo o metodo)"),
+            new ErrorLexico("ES48", "Sintáctico",
+                "[Sintáctico UML] Falta ':' en la definición del miembro"),
+            new ErrorLexico("ES49", "Sintáctico",
+                "[Sintáctico UML] Falta el tipo del miembro"),
+            new ErrorLexico("ES50", "Sintáctico",
+                "[Sintáctico UML] Falta ';' al final del miembro o componente lineal"),
+            new ErrorLexico("ES51", "Sintáctico",
+                "[Sintáctico UML] Falta '}' para cerrar el cuerpo de la clase"),
+            new ErrorLexico("ES52", "Sintáctico",
+                "[Sintáctico UML] Falta el identificador destino en la instrucción de relación"),
+            new ErrorLexico("ES53", "Sintáctico",
+                "[Sintáctico UML] Falta ';' al finalizar la instrucción de relación"),
+            new ErrorLexico("ES54", "Sintáctico",
+                "[Sintáctico UML] Verbo inválido — se esperaba 'extiende', 'implementa' o 'usa'")
         );
 
         // --- Lista filtrada conectada al ComboBox ---
@@ -927,6 +986,136 @@ public class MainFX extends Application {
         Tab tab = new Tab("Catálogo de Errores", contenido);
         panelPestanas.getTabs().add(tab);
         panelPestanas.getSelectionModel().select(tab);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SIMBOLOGÍA DEL LENGUAJE (Omar)
+    private void mostrarTablaSimbologia(Stage owner) {
+        Stage ventana = new Stage();
+        ventana.initOwner(owner);
+        ventana.initModality(Modality.NONE);
+        ventana.setTitle("Simbología del Lenguaje — Diagrams As Code");
+
+        // --- CABECERA ---
+        Label lblTit = new Label("Tabla de Simbología");
+        lblTit.setFont(Font.font("System", FontWeight.BOLD, 15));
+        lblTit.setStyle("-fx-text-fill: #16a085;");
+
+        ComboBox<String> comboModulo = new ComboBox<>();
+        comboModulo.getItems().addAll("Todos", "Flujo", "BD", "Redes", "Conceptual", "UML", "Global", "Puntuacion");
+        comboModulo.setValue("Todos");
+        comboModulo.setStyle("-fx-font-size: 13px;");
+
+        HBox cabecera = new HBox(12, lblTit, new Label("  Filtrar módulo:"), comboModulo);
+        cabecera.setAlignment(Pos.CENTER_LEFT);
+        cabecera.setPadding(new Insets(10, 15, 10, 15));
+        cabecera.setStyle("-fx-background-color: #eaf4f2; -fx-border-color: #bdc3c7; -fx-border-width: 0 0 1 0;");
+
+        // --- TABLA ---
+        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colLexema = new TableColumn<>("Lexema");
+        colLexema.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().lexema));
+        colLexema.setPrefWidth(110);
+
+        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colTipo = new TableColumn<>("Tipo Token");
+        colTipo.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().tipoToken));
+        colTipo.setPrefWidth(130);
+
+        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colCat = new TableColumn<>("Categoría");
+        colCat.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().categoria));
+        colCat.setPrefWidth(150);
+
+        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colDesc = new TableColumn<>("Descripción");
+        colDesc.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().descripcion));
+        colDesc.setPrefWidth(380);
+
+        TableView<TablaSimbologiaEstatica.EntradaSimbolo> tabla = new TableView<>();
+        tabla.getColumns().addAll(colLexema, colTipo, colCat, colDesc);
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.setItems(FXCollections.observableArrayList(TablaSimbologiaEstatica.filtrar("Todos")));
+
+        comboModulo.setOnAction(e ->
+            tabla.setItems(FXCollections.observableArrayList(TablaSimbologiaEstatica.filtrar(comboModulo.getValue())))
+        );
+
+        // --- LEYENDA DE COLORES POR MÓDULO ---
+        HBox leyenda = new HBox(14,
+            etiquetaColor("Flujo",      "#27ae60"),
+            etiquetaColor("BD",         "#2980b9"),
+            etiquetaColor("Redes",      "#e67e22"),
+            etiquetaColor("Conceptual", "#8e44ad"),
+            etiquetaColor("UML",        "#c0392b"),
+            etiquetaColor("Global",     "#7f8c8d")
+        );
+        leyenda.setAlignment(Pos.CENTER_LEFT);
+        leyenda.setPadding(new Insets(6, 15, 6, 15));
+        leyenda.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #bdc3c7; -fx-border-width: 1 0 0 0;");
+
+        BorderPane layout = new BorderPane();
+        layout.setTop(cabecera);
+        layout.setCenter(tabla);
+        layout.setBottom(leyenda);
+
+        ventana.setScene(new Scene(layout, 820, 560));
+        ventana.show();
+    }
+
+    private void mostrarManual(Stage owner, String nombreArchivo, String titulo) {
+        Stage ventana = new Stage();
+        ventana.initOwner(owner);
+        ventana.initModality(Modality.NONE);
+        ventana.setTitle(titulo);
+
+        // --- CABECERA ---
+        Label lblTit = new Label(titulo);
+        lblTit.setFont(Font.font("System", FontWeight.BOLD, 13));
+        lblTit.setStyle("-fx-text-fill: #2c3e50;");
+        lblTit.setPadding(new Insets(10, 15, 10, 15));
+        HBox cabecera = new HBox(lblTit);
+        cabecera.setStyle("-fx-background-color: #ecf0f1; -fx-border-color: #bdc3c7; -fx-border-width: 0 0 1 0;");
+
+        // --- CONTENIDO ---
+        TextArea txtContenido = new TextArea();
+        txtContenido.setEditable(false);
+        txtContenido.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 12px;");
+        txtContenido.setWrapText(true);
+
+        String contenido;
+        try {
+            java.nio.file.Path ruta = java.nio.file.Paths.get(nombreArchivo);
+            contenido = new String(java.nio.file.Files.readAllBytes(ruta), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException ex) {
+            contenido = "No se pudo cargar el archivo: " + nombreArchivo + "\n" +
+                        "Asegúrate de ejecutar el programa desde el directorio raíz del proyecto.\n\n" +
+                        "Ruta esperada: " + nombreArchivo;
+        }
+        txtContenido.setText(contenido);
+        txtContenido.setScrollTop(0);
+
+        // --- PIE ---
+        Label lblPie = new Label(nombreArchivo + "  |  Solo lectura");
+        lblPie.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 11px;");
+        lblPie.setPadding(new Insets(5, 15, 5, 15));
+        HBox pie = new HBox(lblPie);
+        pie.setStyle("-fx-background-color: #ecf0f1; -fx-border-color: #bdc3c7; -fx-border-width: 1 0 0 0;");
+
+        BorderPane layout = new BorderPane();
+        layout.setTop(cabecera);
+        layout.setCenter(txtContenido);
+        layout.setBottom(pie);
+
+        ventana.setScene(new Scene(layout, 820, 620));
+        ventana.show();
+        txtContenido.positionCaret(0);
+    }
+
+    private HBox etiquetaColor(String texto, String color) {
+        Label cuadro = new Label("   ");
+        cuadro.setStyle("-fx-background-color: " + color + "; -fx-border-color: #aaa; -fx-border-width: 1;");
+        Label lbl = new Label(texto);
+        lbl.setFont(Font.font("System", 11));
+        HBox caja = new HBox(5, cuadro, lbl);
+        caja.setAlignment(Pos.CENTER_LEFT);
+        return caja;
     }
 
     // Modelo para la tabla de errores
