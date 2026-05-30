@@ -2,6 +2,7 @@ package com.diagramas;
 
 import com.diagramas.core.*;
 import javafx.application.Application;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -17,8 +18,6 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.beans.property.SimpleStringProperty;
-
 import javafx.scene.shape.CubicCurve;
 import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Line;
@@ -92,7 +91,7 @@ public class MainFX extends Application {
         Region espaciador = new Region();
         HBox.setHgrow(espaciador, Priority.ALWAYS);
 
-        Button btnSimbologia = new Button("Simbología del Lenguaje");
+        Button btnSimbologia = new Button("Simbologia del Lenguaje");
         btnSimbologia.setStyle("-fx-background-color: #16a085; -fx-text-fill: white; -fx-font-weight: bold;");
         btnSimbologia.setOnAction(e -> mostrarTablaSimbologia(primaryStage));
 
@@ -100,11 +99,7 @@ public class MainFX extends Application {
         btnManual.setStyle("-fx-background-color: #1a5276; -fx-text-fill: white; -fx-font-weight: bold;");
         btnManual.setOnAction(e -> mostrarManual(primaryStage, "manual_diagrams_as_code.md", "Manual de Usuario — Diagrams As Code v2.0"));
 
-        Button btnDocs = new Button("Documentación Técnica");
-        btnDocs.setStyle("-fx-background-color: #6c3483; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnDocs.setOnAction(e -> mostrarManual(primaryStage, "documentacion_tecnica.md", "Documentación Técnica — Diagrams As Code"));
-
-        toolbar.getChildren().addAll(lblTitulo, btnNuevo, btnAbrir, btnGuardar, btnCompilar, btnErroresLexicos, btnArbol, espaciador, btnSimbologia, btnManual, btnDocs);
+        toolbar.getChildren().addAll(lblTitulo, btnNuevo, btnAbrir, btnGuardar, btnCompilar, btnErroresLexicos, btnArbol, espaciador, btnSimbologia, btnManual);
 
         // --- 2. EDITOR DE CÓDIGO CON PESTAÑAS (IZQUIERDA) ---
         VBox panelEditor = new VBox(5);
@@ -284,6 +279,182 @@ public class MainFX extends Application {
         } else {
             txtConsola.setText("COMPILACIÓN EXITOSA de [" + pestañaActiva.getText() + "]");
         }
+    }
+
+    private void mostrarTablaSimbologia(Stage owner) {
+        Stage ventana = new Stage();
+        ventana.initOwner(owner);
+        ventana.initModality(Modality.APPLICATION_MODAL);
+        ventana.setTitle("Tabla de Simbologia — Diagrams As Code");
+        ventana.setMinWidth(860);
+        ventana.setMinHeight(520);
+
+        // --- ENCABEZADO ---
+        Label lblTitulo = new Label("Simbologia del Lenguaje .DAC");
+        lblTitulo.setFont(Font.font("System", FontWeight.BOLD, 15));
+        lblTitulo.setTextFill(Color.WHITE);
+
+        // --- FILTRO ---
+        Label lblFiltro = new Label("Filtrar por modulo:");
+        lblFiltro.setTextFill(Color.WHITE);
+        lblFiltro.setFont(Font.font("System", FontWeight.BOLD, 13));
+
+        ComboBox<String> cmbFiltro = new ComboBox<>();
+        cmbFiltro.getItems().addAll("Todos", "Flujo", "BD", "Redes", "Conceptual", "UML", "Global", "Puntuacion");
+        cmbFiltro.setValue("Todos");
+        cmbFiltro.setStyle("-fx-font-size: 13px;");
+
+        Label lblConteo = new Label("42 simbolos");
+        lblConteo.setTextFill(Color.LIGHTGRAY);
+        lblConteo.setFont(Font.font("System", 12));
+
+        HBox barraFiltro = new HBox(12, lblTitulo, new Separator(), lblFiltro, cmbFiltro, lblConteo);
+        barraFiltro.setAlignment(Pos.CENTER_LEFT);
+        barraFiltro.setPadding(new Insets(10, 15, 10, 15));
+        barraFiltro.setStyle("-fx-background-color: #1a252f;");
+
+        // --- TABLA ---
+        TableView<TablaSimbologiaEstatica.EntradaSimbolo> tabla = new TableView<>();
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.setStyle("-fx-font-size: 13px;");
+
+        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colLexema = new TableColumn<>("Lexema");
+        colLexema.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().lexema));
+        colLexema.setPrefWidth(120);
+
+        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colTipo = new TableColumn<>("Tipo Token");
+        colTipo.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().tipoToken));
+        colTipo.setPrefWidth(150);
+
+        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colCategoria = new TableColumn<>("Categoria");
+        colCategoria.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().categoria));
+        colCategoria.setPrefWidth(170);
+
+        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colDesc = new TableColumn<>("Descripcion");
+        colDesc.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().descripcion));
+        colDesc.setPrefWidth(380);
+
+        tabla.getColumns().addAll(colLexema, colTipo, colCategoria, colDesc);
+        tabla.setItems(FXCollections.observableArrayList(TablaSimbologiaEstatica.TABLA));
+
+        // Color de filas por categoria
+        tabla.setRowFactory(tv -> new TableRow<TablaSimbologiaEstatica.EntradaSimbolo>() {
+            @Override
+            protected void updateItem(TablaSimbologiaEstatica.EntradaSimbolo item, boolean empty) {
+                super.updateItem(item, empty);
+                if (item == null || empty) {
+                    setStyle("");
+                } else if (item.categoria.startsWith("Flujo")) {
+                    setStyle("-fx-background-color: #eaf4fb;");
+                } else if (item.categoria.startsWith("BD")) {
+                    setStyle("-fx-background-color: #fef9e7;");
+                } else if (item.categoria.startsWith("Redes")) {
+                    setStyle("-fx-background-color: #eafaf1;");
+                } else if (item.categoria.equals("Cabecera") || item.categoria.equals("Meta-Instruccion")) {
+                    setStyle("-fx-background-color: #f5eef8;");
+                } else {
+                    setStyle("-fx-background-color: #f2f3f4;");
+                }
+            }
+        });
+
+        // --- LEYENDA DE COLORES ---
+        HBox leyenda = new HBox(16);
+        leyenda.setPadding(new Insets(6, 15, 6, 15));
+        leyenda.setAlignment(Pos.CENTER_LEFT);
+        leyenda.setStyle("-fx-background-color: #ecf0f1; -fx-border-color: #bdc3c7; -fx-border-width: 1 0 0 0;");
+        leyenda.getChildren().addAll(
+            etiquetaColor("Global",     "#f5eef8"),
+            etiquetaColor("Flujo",      "#eaf4fb"),
+            etiquetaColor("BD",         "#fef9e7"),
+            etiquetaColor("Redes",      "#eafaf1"),
+            etiquetaColor("Puntacion y Literales", "#f2f3f4")
+        );
+
+        // --- LOGICA DEL FILTRO ---
+        cmbFiltro.setOnAction(e -> {
+            String sel = cmbFiltro.getValue();
+            java.util.List<TablaSimbologiaEstatica.EntradaSimbolo> resultado =
+                TablaSimbologiaEstatica.filtrar(sel);
+            tabla.setItems(FXCollections.observableArrayList(resultado));
+            lblConteo.setText(resultado.size() + " simbolos");
+        });
+
+        // --- LAYOUT FINAL ---
+        BorderPane layout = new BorderPane();
+        layout.setTop(barraFiltro);
+        layout.setCenter(tabla);
+        layout.setBottom(leyenda);
+
+        ventana.setScene(new Scene(layout, 880, 560));
+        ventana.show();
+    }
+
+    private void mostrarManual(Stage owner, String nombreArchivo, String tituloVentana) {
+        Stage ventana = new Stage();
+        ventana.initOwner(owner);
+        ventana.initModality(Modality.APPLICATION_MODAL);
+        ventana.setTitle(tituloVentana);
+        ventana.setMinWidth(780);
+        ventana.setMinHeight(580);
+
+        // --- BARRA SUPERIOR ---
+        Label lblTitulo = new Label(tituloVentana);
+        lblTitulo.setFont(Font.font("System", FontWeight.BOLD, 14));
+        lblTitulo.setTextFill(Color.WHITE);
+
+        String colorCabecera = nombreArchivo.contains("tecnica") ? "#6c3483" : "#1a5276";
+        HBox cabecera = new HBox(lblTitulo);
+        cabecera.setAlignment(Pos.CENTER_LEFT);
+        cabecera.setPadding(new Insets(10, 15, 10, 15));
+        cabecera.setStyle("-fx-background-color: " + colorCabecera + ";");
+
+        // --- CONTENIDO ---
+        TextArea txtContenido = new TextArea();
+        txtContenido.setEditable(false);
+        txtContenido.setFont(Font.font("Monospaced", 13));
+        txtContenido.setWrapText(false);
+        txtContenido.setStyle("-fx-background-color: #fdfefe;");
+
+        String contenido;
+        try {
+            java.nio.file.Path ruta = java.nio.file.Paths.get(nombreArchivo);
+            contenido = new String(java.nio.file.Files.readAllBytes(ruta), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException ex) {
+            contenido = "No se pudo cargar el archivo: " + nombreArchivo + "\n" +
+                        "Asegurate de ejecutar el programa desde el directorio raiz del proyecto.\n\n" +
+                        "Ruta esperada: " + nombreArchivo;
+        }
+        txtContenido.setText(contenido);
+        txtContenido.setScrollTop(0);
+
+        // --- PIE ---
+        Label lblPie = new Label(nombreArchivo + "  |  Solo lectura");
+        lblPie.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 11px;");
+        lblPie.setPadding(new Insets(5, 15, 5, 15));
+
+        HBox pie = new HBox(lblPie);
+        pie.setStyle("-fx-background-color: #ecf0f1; -fx-border-color: #bdc3c7; -fx-border-width: 1 0 0 0;");
+
+        // --- LAYOUT ---
+        BorderPane layout = new BorderPane();
+        layout.setTop(cabecera);
+        layout.setCenter(txtContenido);
+        layout.setBottom(pie);
+
+        ventana.setScene(new Scene(layout, 820, 620));
+        ventana.show();
+        txtContenido.positionCaret(0);
+    }
+
+    private HBox etiquetaColor(String texto, String color) {
+        Label cuadro = new Label("   ");
+        cuadro.setStyle("-fx-background-color: " + color + "; -fx-border-color: #aaa; -fx-border-width: 1;");
+        Label lbl = new Label(texto);
+        lbl.setFont(Font.font("System", 11));
+        HBox caja = new HBox(5, cuadro, lbl);
+        caja.setAlignment(Pos.CENTER_LEFT);
+        return caja;
     }
 
     private String obtenerErroresString(ManejadorErrores manejador) {
@@ -986,136 +1157,6 @@ public class MainFX extends Application {
         Tab tab = new Tab("Catálogo de Errores", contenido);
         panelPestanas.getTabs().add(tab);
         panelPestanas.getSelectionModel().select(tab);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // SIMBOLOGÍA DEL LENGUAJE (Omar)
-    private void mostrarTablaSimbologia(Stage owner) {
-        Stage ventana = new Stage();
-        ventana.initOwner(owner);
-        ventana.initModality(Modality.NONE);
-        ventana.setTitle("Simbología del Lenguaje — Diagrams As Code");
-
-        // --- CABECERA ---
-        Label lblTit = new Label("Tabla de Simbología");
-        lblTit.setFont(Font.font("System", FontWeight.BOLD, 15));
-        lblTit.setStyle("-fx-text-fill: #16a085;");
-
-        ComboBox<String> comboModulo = new ComboBox<>();
-        comboModulo.getItems().addAll("Todos", "Flujo", "BD", "Redes", "Conceptual", "UML", "Global", "Puntuacion");
-        comboModulo.setValue("Todos");
-        comboModulo.setStyle("-fx-font-size: 13px;");
-
-        HBox cabecera = new HBox(12, lblTit, new Label("  Filtrar módulo:"), comboModulo);
-        cabecera.setAlignment(Pos.CENTER_LEFT);
-        cabecera.setPadding(new Insets(10, 15, 10, 15));
-        cabecera.setStyle("-fx-background-color: #eaf4f2; -fx-border-color: #bdc3c7; -fx-border-width: 0 0 1 0;");
-
-        // --- TABLA ---
-        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colLexema = new TableColumn<>("Lexema");
-        colLexema.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().lexema));
-        colLexema.setPrefWidth(110);
-
-        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colTipo = new TableColumn<>("Tipo Token");
-        colTipo.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().tipoToken));
-        colTipo.setPrefWidth(130);
-
-        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colCat = new TableColumn<>("Categoría");
-        colCat.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().categoria));
-        colCat.setPrefWidth(150);
-
-        TableColumn<TablaSimbologiaEstatica.EntradaSimbolo, String> colDesc = new TableColumn<>("Descripción");
-        colDesc.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().descripcion));
-        colDesc.setPrefWidth(380);
-
-        TableView<TablaSimbologiaEstatica.EntradaSimbolo> tabla = new TableView<>();
-        tabla.getColumns().addAll(colLexema, colTipo, colCat, colDesc);
-        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        tabla.setItems(FXCollections.observableArrayList(TablaSimbologiaEstatica.filtrar("Todos")));
-
-        comboModulo.setOnAction(e ->
-            tabla.setItems(FXCollections.observableArrayList(TablaSimbologiaEstatica.filtrar(comboModulo.getValue())))
-        );
-
-        // --- LEYENDA DE COLORES POR MÓDULO ---
-        HBox leyenda = new HBox(14,
-            etiquetaColor("Flujo",      "#27ae60"),
-            etiquetaColor("BD",         "#2980b9"),
-            etiquetaColor("Redes",      "#e67e22"),
-            etiquetaColor("Conceptual", "#8e44ad"),
-            etiquetaColor("UML",        "#c0392b"),
-            etiquetaColor("Global",     "#7f8c8d")
-        );
-        leyenda.setAlignment(Pos.CENTER_LEFT);
-        leyenda.setPadding(new Insets(6, 15, 6, 15));
-        leyenda.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #bdc3c7; -fx-border-width: 1 0 0 0;");
-
-        BorderPane layout = new BorderPane();
-        layout.setTop(cabecera);
-        layout.setCenter(tabla);
-        layout.setBottom(leyenda);
-
-        ventana.setScene(new Scene(layout, 820, 560));
-        ventana.show();
-    }
-
-    private void mostrarManual(Stage owner, String nombreArchivo, String titulo) {
-        Stage ventana = new Stage();
-        ventana.initOwner(owner);
-        ventana.initModality(Modality.NONE);
-        ventana.setTitle(titulo);
-
-        // --- CABECERA ---
-        Label lblTit = new Label(titulo);
-        lblTit.setFont(Font.font("System", FontWeight.BOLD, 13));
-        lblTit.setStyle("-fx-text-fill: #2c3e50;");
-        lblTit.setPadding(new Insets(10, 15, 10, 15));
-        HBox cabecera = new HBox(lblTit);
-        cabecera.setStyle("-fx-background-color: #ecf0f1; -fx-border-color: #bdc3c7; -fx-border-width: 0 0 1 0;");
-
-        // --- CONTENIDO ---
-        TextArea txtContenido = new TextArea();
-        txtContenido.setEditable(false);
-        txtContenido.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 12px;");
-        txtContenido.setWrapText(true);
-
-        String contenido;
-        try {
-            java.nio.file.Path ruta = java.nio.file.Paths.get(nombreArchivo);
-            contenido = new String(java.nio.file.Files.readAllBytes(ruta), java.nio.charset.StandardCharsets.UTF_8);
-        } catch (java.io.IOException ex) {
-            contenido = "No se pudo cargar el archivo: " + nombreArchivo + "\n" +
-                        "Asegúrate de ejecutar el programa desde el directorio raíz del proyecto.\n\n" +
-                        "Ruta esperada: " + nombreArchivo;
-        }
-        txtContenido.setText(contenido);
-        txtContenido.setScrollTop(0);
-
-        // --- PIE ---
-        Label lblPie = new Label(nombreArchivo + "  |  Solo lectura");
-        lblPie.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 11px;");
-        lblPie.setPadding(new Insets(5, 15, 5, 15));
-        HBox pie = new HBox(lblPie);
-        pie.setStyle("-fx-background-color: #ecf0f1; -fx-border-color: #bdc3c7; -fx-border-width: 1 0 0 0;");
-
-        BorderPane layout = new BorderPane();
-        layout.setTop(cabecera);
-        layout.setCenter(txtContenido);
-        layout.setBottom(pie);
-
-        ventana.setScene(new Scene(layout, 820, 620));
-        ventana.show();
-        txtContenido.positionCaret(0);
-    }
-
-    private HBox etiquetaColor(String texto, String color) {
-        Label cuadro = new Label("   ");
-        cuadro.setStyle("-fx-background-color: " + color + "; -fx-border-color: #aaa; -fx-border-width: 1;");
-        Label lbl = new Label(texto);
-        lbl.setFont(Font.font("System", 11));
-        HBox caja = new HBox(5, cuadro, lbl);
-        caja.setAlignment(Pos.CENTER_LEFT);
-        return caja;
     }
 
     // Modelo para la tabla de errores

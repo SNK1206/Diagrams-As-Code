@@ -10,6 +10,7 @@ import java.util.List;
 public class Main {
     public static void main(String[] args) {
         System.out.println("====== COMPILADOR DE CONSOLA: DIAGRAMS AS CODE ======\n");
+        TablaSimbologiaEstatica.imprimir();
 
         // 1. Validar que el usuario pase el archivo por la terminal
         if (args.length == 0) {

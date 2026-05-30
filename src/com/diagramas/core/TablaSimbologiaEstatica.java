@@ -123,6 +123,8 @@ public class TablaSimbologiaEstatica {
     /**
      * Filtra la tabla por modulo de diagrama.
      * Opciones: "Todos", "Flujo", "BD", "Redes", "Conceptual", "UML", "Global", "Puntuacion"
+     * Los filtros de modulo incluyen siempre los simbolos globales y de puntuacion
+     * porque son comunes a todos los diagramas.
      */
     public static List<EntradaSimbolo> filtrar(String modulo) {
         if (modulo == null || modulo.equals("Todos")) return new ArrayList<>(TABLA);
