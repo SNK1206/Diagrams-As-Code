@@ -41,7 +41,7 @@ public class FlujoParser {
                     procesarConexionOError(raiz);
                 }
             } else {
-                errores.reportarError(tokenActual.getLinea(), "Sintáctico Flujo", "Token inesperado '" + tokenActual.getLexema() + "'.", "Inicia la línea con una declaración válida (nodo, condicion, etc.) o una conexión.");
+                errores.reportarError("ES06", tokenActual.getLinea(), "Sintáctico Flujo", "Token inesperado '" + tokenActual.getLexema() + "'.", "Inicia la línea con una declaración válida (nodo, condicion, etc.) o una conexión.");
                 pos++;
             }
         }
@@ -52,11 +52,11 @@ public class FlujoParser {
         int lineaOriginal = tokens.get(pos).getLinea();
         pos++; // Consumir palabra clave
 
-        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el nombre del identificador después de '" + rol + "'.")) {
+        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador después de '" + rol + "'.")) {
             String nombre = tokens.get(pos).getLexema();
             pos++;
 
-            if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al final de la declaración de '" + nombre + "'.")) {
+            if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES08", "Falta ';' al final de la declaración de '" + nombre + "'.")) {
                 pos++;
                 if (!tabla.registrar(nombre, rol)) {
                     errores.reportarError(lineaOriginal, "Semántico Flujo", "El identificador '" + nombre + "' ya existe.", "Usa un nombre diferente.");
@@ -70,15 +70,15 @@ public class FlujoParser {
         int lineaOriginal = tokens.get(pos).getLinea();
         pos++; // Consumir palabra clave (nodo, condicion, bucle, subproceso)
 
-        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el nombre del identificador.")) {
+        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador.")) {
             String nombre = tokens.get(pos).getLexema();
             pos++;
 
-            if (validarSiguienteTipo(Token.Tipo.TEXTO_LITERAL, "Falta la descripción entre comillas para la instrucción '" + rol + "'.")) {
+            if (validarSiguienteTipo(Token.Tipo.TEXTO_LITERAL, "ES09", "Falta la descripción entre comillas para la instrucción '" + rol + "'.")) {
                 String texto = tokens.get(pos).getLexema();
                 pos++;
 
-                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al final de la línea.")) {
+                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES10", "Falta ';' al final de la línea.")) {
                     pos++;
                     if (!tabla.registrar(nombre, rol)) {
                         errores.reportarError(lineaOriginal, "Semántico Flujo", "El identificador '" + nombre + "' ya está registrado.", "Cambia el nombre para evitar colisiones.");
@@ -97,11 +97,11 @@ public class FlujoParser {
         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR && tokens.get(pos).getLexema().equals("conecta")) {
             pos++; // Consumir 'conecta'
 
-            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el elemento destino para la conexión.")) {
+            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES11", "Falta el elemento destino para la conexión.")) {
                 String idDestino = tokens.get(pos).getLexema();
                 pos++;
 
-                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al finalizar la instrucción de conexión.")) {
+                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES12", "Falta ';' al finalizar la instrucción de conexión.")) {
                     pos++;
 
                     if (!tabla.existe(idOrigen)) {
@@ -114,15 +114,15 @@ public class FlujoParser {
                 }
             }
         } else {
-            errores.reportarError(tOrigen.getLinea(), "Sintáctico Flujo", "Instrucción o verbo inválido en '" + idOrigen + "'.", "Si deseas conectar elementos utiliza el verbo exclusivo 'conecta'.");
+            errores.reportarError("ES13", tOrigen.getLinea(), "Sintáctico Flujo", "Instrucción o verbo inválido en '" + idOrigen + "'.", "Si deseas conectar elementos utiliza el verbo exclusivo 'conecta'.");
             recuperarPanico();
         }
     }
 
-    private boolean validarSiguienteTipo(Token.Tipo esperado, String mensajeError) {
+    private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
             int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
-            errores.reportarError(l, "Sintáctico Flujo", mensajeError, "Revisa la sintaxis del diagrama.");
+            errores.reportarError(codigo, l, "Sintáctico Flujo", mensajeError, "Revisa la sintaxis del diagrama.");
             return false;
         }
         return true;

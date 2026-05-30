@@ -42,7 +42,7 @@ public class BDParser {
                     procesarRelacion(raiz);
                 }
             } else {
-                errores.reportarError(tokenActual.getLinea(), "Sintáctico BD", "Token inesperado '" + tokenActual.getLexema() + "'.", "Inicia la línea con un componente (tabla, vista, etc.) o una relación.");
+                errores.reportarError("ES14", tokenActual.getLinea(), "Sintáctico BD", "Token inesperado '" + tokenActual.getLexema() + "'.", "Inicia la línea con un componente (tabla, vista, etc.) o una relación.");
                 pos++;
             }
         }
@@ -53,11 +53,11 @@ public class BDParser {
         int lineaOriginal = tokens.get(pos).getLinea();
         pos++; // Consumir 'tabla' o 'vista'
 
-        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el nombre de la " + rol + ".")) {
+        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES15", "Falta el nombre de la " + rol + ".")) {
             String nombreBloque = tokens.get(pos).getLexema();
             pos++;
 
-            if (validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "Falta abrir '{' para la definición.")) {
+            if (validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "ES16", "Falta abrir '{' para la definición.")) {
                 pos++;
 
                 if (!tabla.registrar(nombreBloque, rol)) {
@@ -71,7 +71,7 @@ public class BDParser {
                     else recuperarPanicoAtributo();
                 }
 
-                if (validarSiguienteTipo(Token.Tipo.LLAVE_DER, "Falta cerrar llaves '}'.")) {
+                if (validarSiguienteTipo(Token.Tipo.LLAVE_DER, "ES21", "Falta cerrar llaves '}'.")) {
                     pos++;
                     raiz.agregarElemento(new NodoTabla(nombreBloque + " (" + rol.toUpperCase() + ")", atributos));
                 }
@@ -80,14 +80,14 @@ public class BDParser {
     }
 
     private Atributo leerAtributo() {
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el nombre del atributo.")) return null;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES17", "Falta el nombre del atributo.")) return null;
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.DOS_PUNTOS, "Falta ':'.")) return null;
+        if (!validarSiguienteTipo(Token.Tipo.DOS_PUNTOS, "ES18", "Falta ':'.")) return null;
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el tipo de dato.")) return null;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES19", "Falta el tipo de dato.")) return null;
         String tipoDato = tokens.get(pos).getLexema();
         pos++;
 
@@ -97,7 +97,7 @@ public class BDParser {
             pos++;
         }
 
-        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al final del atributo.")) return null;
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES20", "Falta ';' al final del atributo.")) return null;
         pos++;
 
         return new Atributo(nombre, tipoDato, modificador);
@@ -107,11 +107,11 @@ public class BDParser {
         int lineaOriginal = tokens.get(pos).getLinea();
         pos++; // Consumir palabra clave
 
-        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el identificador para el " + rol + ".")) {
+        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES22", "Falta el identificador para el " + rol + ".")) {
             String nombre = tokens.get(pos).getLexema();
             pos++;
 
-            if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al final.")) {
+            if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES23", "Falta ';' al final.")) {
                 pos++;
                 if (!tabla.registrar(nombre, rol)) {
                     errores.reportarError(lineaOriginal, "Semántico BD", "El identificador '" + nombre + "' ya está ocupado.", "Usa otro nombre.");
@@ -129,11 +129,11 @@ public class BDParser {
         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR && tokens.get(pos).getLexema().equals("relaciona")) {
             pos++;
 
-            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el destino de la relación.")) {
+            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES24", "Falta el destino de la relación.")) {
                 String idDestino = tokens.get(pos).getLexema();
                 pos++;
 
-                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';'.")) {
+                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES25", "Falta ';'.")) {
                     pos++;
 
                     if (!tabla.existe(idOrigen)) {
@@ -146,15 +146,15 @@ public class BDParser {
                 }
             }
         } else {
-            errores.reportarError(tOrigen.getLinea(), "Sintáctico BD", "Verbo inválido en '" + idOrigen + "'.", "Usa el verbo 'relaciona' para bases de datos.");
+            errores.reportarError("ES26", tOrigen.getLinea(), "Sintáctico BD", "Verbo inválido en '" + idOrigen + "'.", "Usa el verbo 'relaciona' para bases de datos.");
             recuperarPanicoTabla();
         }
     }
 
-    private boolean validarSiguienteTipo(Token.Tipo esperado, String mensajeError) {
+    private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
             int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
-            errores.reportarError(l, "Sintáctico BD", mensajeError, "Verifica las reglas de sintaxis.");
+            errores.reportarError(codigo, l, "Sintáctico BD", mensajeError, "Verifica las reglas de sintaxis.");
             return false;
         }
         return true;

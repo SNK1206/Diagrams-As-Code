@@ -75,7 +75,7 @@ public class LexerBase {
                     indice++;
                 }
                 if (indice >= codigo.length()) {
-                    manejadorErrores.reportarError(lineaActual, "Léxico", "Cadena de texto sin cerrar.", "Añade comillas dobles (\") al final del texto.");
+                    manejadorErrores.reportarError("EL02", lineaActual, "Léxico", "Cadena de texto sin cerrar.", "Añade comillas dobles (\") al final del texto.");
                 } else {
                     indice++; // Saltar la comilla de cierre
                     tokens.add(new Token(Token.Tipo.TEXTO_LITERAL, sb.toString(), lineaActual));

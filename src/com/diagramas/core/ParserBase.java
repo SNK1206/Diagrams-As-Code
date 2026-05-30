@@ -40,11 +40,11 @@ public class ParserBase {
                         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) {
                             pos++;
                         } else {
-                            manejadorErrores.reportarError(t.getLinea(), "Sintáctico Núcleo", "Falta ';' al final de la instrucción '" + lexema + "'.", "Añade un punto y coma.");
+                            manejadorErrores.reportarError("ES01", t.getLinea(), "Sintáctico Núcleo", "Falta ';' al final de la instrucción '" + lexema + "'.", "Añade un punto y coma.");
                         }
                         continue; // Volver al inicio del bucle para leer la siguiente línea
                     } else {
-                        manejadorErrores.reportarError(t.getLinea(), "Sintáctico Núcleo", "Se esperaba un texto entre comillas después de '" + lexema + "'.", "Usa comillas dobles para el valor.");
+                        manejadorErrores.reportarError("ES02", t.getLinea(), "Sintáctico Núcleo", "Se esperaba un texto entre comillas después de '" + lexema + "'.", "Usa comillas dobles para el valor.");
                         pos++;
                         continue;
                     }
@@ -70,10 +70,10 @@ public class ParserBase {
                             diagramaEncontrado = true;
                             break; // Romper el bucle del núcleo, el submódulo toma el control total
                         } else {
-                            manejadorErrores.reportarError(t.getLinea(), "Sintáctico", "Falta ';' en la cabecera.", "Termina la declaración con punto y coma.");
+                            manejadorErrores.reportarError("ES03", t.getLinea(), "Sintáctico", "Falta ';' en la cabecera.", "Termina la declaración con punto y coma.");
                         }
                     } else {
-                        manejadorErrores.reportarError(t.getLinea(), "Sintáctico", "Falta el tipo de diagrama.", "Especifica 'Flujo', 'BD', 'Redes', 'Conceptual' o 'UML'.");
+                        manejadorErrores.reportarError("ES04", t.getLinea(), "Sintáctico", "Falta el tipo de diagrama.", "Especifica 'Flujo', 'BD', 'Redes', 'Conceptual' o 'UML'.");
                     }
                     break;
                 }
@@ -82,7 +82,7 @@ public class ParserBase {
         }
 
         if (!diagramaEncontrado && !manejadorErrores.tieneErrores()) {
-            manejadorErrores.reportarError(1, "Sintáctico", "No se encontró la cabecera principal.", "Asegúrate de incluir 'diagrama [Tipo];' en el archivo.");
+            manejadorErrores.reportarError("ES05", 1, "Sintáctico", "No se encontró la cabecera principal 'diagrama <Tipo>;'.", "Asegúrate de incluir 'diagrama Flujo;', 'diagrama BD;', etc.");
         }
     }
 
@@ -104,7 +104,7 @@ public class ParserBase {
                 com.diagramas.modulos.uml.UMLParser parserUML = new com.diagramas.modulos.uml.UMLParser(tokensRestantes, tablaSimbolos, manejadorErrores);
                 return parserUML.parsear();
             default:
-                manejadorErrores.reportarError(1, "Semántico", "Módulo '" + tipoDiagrama + "' no reconocido.", "Los módulos válidos son: Flujo, BD, Redes, Conceptual, UML.");
+                manejadorErrores.reportarError("ES05", 1, "Sintáctico", "Módulo '" + tipoDiagrama + "' no reconocido.", "Los módulos válidos son: Flujo, BD, Redes, Conceptual, UML.");
                 return null;
         }
     }

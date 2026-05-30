@@ -39,7 +39,7 @@ public class RedesParser {
                     procesarEnlace(raiz);
                 }
             } else {
-                errores.reportarError(tokenActual.getLinea(), "Sintáctico Redes", "Token inesperado '" + tokenActual.getLexema() + "'.", "Usa la palabra 'dispositivo' o define un enlace.");
+                errores.reportarError("ES27", tokenActual.getLinea(), "Sintáctico Redes", "Token inesperado '" + tokenActual.getLexema() + "'.", "Usa la palabra 'dispositivo' o define un enlace.");
                 pos++;
             }
         }
@@ -50,11 +50,11 @@ public class RedesParser {
         int lineaOriginal = tokens.get(pos).getLinea();
         pos++; // Consumir 'dispositivo'
 
-        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el nombre del dispositivo.")) {
+        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES28", "Falta el nombre del dispositivo.")) {
             String nombre = tokens.get(pos).getLexema();
             pos++;
 
-            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el tipo de dispositivo (ej. Router, Switch).")) {
+            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES29", "Falta el tipo de dispositivo (ej. Router, Switch).")) {
                 String tipo = tokens.get(pos).getLexema();
                 pos++;
 
@@ -68,10 +68,10 @@ public class RedesParser {
                         pos++;
                     }
                     config = sb.toString().trim();
-                    if (validarSiguienteTipo(Token.Tipo.LLAVE_DER, "Falta cerrar llaves '}'.")) pos++;
+                    if (validarSiguienteTipo(Token.Tipo.LLAVE_DER, "ES30", "Falta cerrar llaves '}'.")) pos++;
                 }
 
-                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al final del dispositivo.")) {
+                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES31", "Falta ';' al final del dispositivo.")) {
                     pos++;
                     if (!tabla.registrar(nombre, "dispositivo_" + tipo)) {
                         errores.reportarError(lineaOriginal, "Semántico Redes", "El dispositivo '" + nombre + "' ya existe.", "Asigna un nombre único.");
@@ -90,11 +90,11 @@ public class RedesParser {
         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR && tokens.get(pos).getLexema().equals("enlaza")) {
             pos++; // Consumir 'enlaza'
 
-            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el dispositivo destino.")) {
+            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES32", "Falta el dispositivo destino.")) {
                 String idDestino = tokens.get(pos).getLexema();
                 pos++;
 
-                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';'.")) {
+                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES33", "Falta ';'.")) {
                     pos++;
 
                     if (!tabla.existe(idOrigen)) {
@@ -107,16 +107,16 @@ public class RedesParser {
                 }
             }
         } else {
-            errores.reportarError(tOrigen.getLinea(), "Sintáctico Redes", "Verbo incorrecto en '" + idOrigen + "'.", "Para redes usa el verbo exclusivo 'enlaza'.");
+            errores.reportarError("ES34", tOrigen.getLinea(), "Sintáctico Redes", "Verbo incorrecto en '" + idOrigen + "'.", "Para redes usa el verbo exclusivo 'enlaza'.");
             while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
             if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
         }
     }
 
-    private boolean validarSiguienteTipo(Token.Tipo esperado, String mensajeError) {
+    private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
             int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
-            errores.reportarError(l, "Sintáctico Redes", mensajeError, "Revisa la guía del módulo Redes.");
+            errores.reportarError(codigo, l, "Sintáctico Redes", mensajeError, "Revisa la guía del módulo Redes.");
             return false;
         }
         return true;

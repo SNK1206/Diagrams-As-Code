@@ -37,9 +37,10 @@ public class ManejadorErrores {
 
     public void reportarErrorLéxico(int linea, char caracterInvalido) {
         reportarError(
+                "EL01",
                 linea,
-                "Análisis Léxico",
-                "El carácter '" + caracterInvalido + "' no pertenece al alfabeto del lenguaje.",
+                "Léxico",
+                "El carácter '" + caracterInvalido + "' no pertenece al alfabeto del lenguaje DAC.",
                 "Elimina el carácter o verifica si querías escribir un identificador o una cadena entre comillas \".\""
         );
     }
