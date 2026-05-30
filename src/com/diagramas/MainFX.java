@@ -76,13 +76,17 @@ public class MainFX extends Application {
 
         Button btnManual = new Button("Manual de Usuario");
         btnManual.setStyle("-fx-background-color: #1a5276; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnManual.setOnAction(e -> mostrarManual(primaryStage));
+        btnManual.setOnAction(e -> mostrarManual(primaryStage, "manual_diagrams_as_code.md", "Manual de Usuario — Diagrams As Code v2.0"));
+
+        Button btnDocs = new Button("Documentacion Tecnica");
+        btnDocs.setStyle("-fx-background-color: #6c3483; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnDocs.setOnAction(e -> mostrarManual(primaryStage, "documentacion_tecnica.md", "Documentacion Tecnica — Diagrams As Code"));
 
         // Espaciador que empuja los botones de referencia al extremo derecho
         Region espaciador = new Region();
         HBox.setHgrow(espaciador, Priority.ALWAYS);
 
-        toolbar.getChildren().addAll(lblTitulo, btnNuevo, btnAbrir, btnGuardar, btnCompilar, espaciador, btnSimbologia, btnManual);
+        toolbar.getChildren().addAll(lblTitulo, btnNuevo, btnAbrir, btnGuardar, btnCompilar, espaciador, btnSimbologia, btnManual, btnDocs);
 
         // --- 2. EDITOR DE CÓDIGO CON PESTAÑAS (IZQUIERDA) ---
         VBox panelEditor = new VBox(5);
@@ -373,46 +377,46 @@ public class MainFX extends Application {
         ventana.show();
     }
 
-    private void mostrarManual(Stage owner) {
+    private void mostrarManual(Stage owner, String nombreArchivo, String tituloVentana) {
         Stage ventana = new Stage();
         ventana.initOwner(owner);
         ventana.initModality(Modality.APPLICATION_MODAL);
-        ventana.setTitle("Manual de Usuario — Diagrams As Code");
+        ventana.setTitle(tituloVentana);
         ventana.setMinWidth(780);
         ventana.setMinHeight(580);
 
         // --- BARRA SUPERIOR ---
-        Label lblTitulo = new Label("Manual de Usuario  —  Diagrams As Code v2.0");
+        Label lblTitulo = new Label(tituloVentana);
         lblTitulo.setFont(Font.font("System", FontWeight.BOLD, 14));
         lblTitulo.setTextFill(Color.WHITE);
 
+        String colorCabecera = nombreArchivo.contains("tecnica") ? "#6c3483" : "#1a5276";
         HBox cabecera = new HBox(lblTitulo);
         cabecera.setAlignment(Pos.CENTER_LEFT);
         cabecera.setPadding(new Insets(10, 15, 10, 15));
-        cabecera.setStyle("-fx-background-color: #1a5276;");
+        cabecera.setStyle("-fx-background-color: " + colorCabecera + ";");
 
         // --- CONTENIDO ---
-        TextArea txtManual = new TextArea();
-        txtManual.setEditable(false);
-        txtManual.setFont(Font.font("Monospaced", 13));
-        txtManual.setWrapText(false);
-        txtManual.setStyle("-fx-background-color: #fdfefe;");
+        TextArea txtContenido = new TextArea();
+        txtContenido.setEditable(false);
+        txtContenido.setFont(Font.font("Monospaced", 13));
+        txtContenido.setWrapText(false);
+        txtContenido.setStyle("-fx-background-color: #fdfefe;");
 
-        // Leer el archivo manual desde el directorio de trabajo
         String contenido;
         try {
-            java.nio.file.Path ruta = java.nio.file.Paths.get("manual_diagrams_as_code.md");
+            java.nio.file.Path ruta = java.nio.file.Paths.get(nombreArchivo);
             contenido = new String(java.nio.file.Files.readAllBytes(ruta), java.nio.charset.StandardCharsets.UTF_8);
         } catch (java.io.IOException ex) {
-            contenido = "No se pudo cargar el archivo manual_diagrams_as_code.md\n" +
+            contenido = "No se pudo cargar el archivo: " + nombreArchivo + "\n" +
                         "Asegurate de ejecutar el programa desde el directorio raiz del proyecto.\n\n" +
-                        "Ruta esperada: manual_diagrams_as_code.md";
+                        "Ruta esperada: " + nombreArchivo;
         }
-        txtManual.setText(contenido);
-        txtManual.setScrollTop(0);
+        txtContenido.setText(contenido);
+        txtContenido.setScrollTop(0);
 
         // --- PIE ---
-        Label lblPie = new Label("manual_diagrams_as_code.md  |  Solo lectura");
+        Label lblPie = new Label(nombreArchivo + "  |  Solo lectura");
         lblPie.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 11px;");
         lblPie.setPadding(new Insets(5, 15, 5, 15));
 
@@ -422,12 +426,12 @@ public class MainFX extends Application {
         // --- LAYOUT ---
         BorderPane layout = new BorderPane();
         layout.setTop(cabecera);
-        layout.setCenter(txtManual);
+        layout.setCenter(txtContenido);
         layout.setBottom(pie);
 
         ventana.setScene(new Scene(layout, 820, 620));
         ventana.show();
-        txtManual.positionCaret(0);
+        txtContenido.positionCaret(0);
     }
 
     private HBox etiquetaColor(String texto, String color) {
