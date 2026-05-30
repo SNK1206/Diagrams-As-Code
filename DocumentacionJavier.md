@@ -3,7 +3,7 @@
 
 **Proyecto:** Diagrams As Code — IDE Pedagógico  
 **Archivo principal modificado:** `src/com/diagramas/MainFX.java`  
-**Archivos nuevos creados:** `ejecutar.ps1`  
+**Archivos nuevos creados:** `ejecutar.ps1`, `pruebas.md`, `DocumentacionJavier.md`  
 **Autor:** Javier Chávez Arias  
 **Fecha:** 2026-05-30
 
@@ -33,7 +33,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 **`FXCollections`** — crea la `ObservableList` que alimenta la tabla.  
 **`ObservableList`** — lista que notifica automáticamente a la `TableView` cuando cambia.  
 **`FilteredList`** — envuelve la `ObservableList` y aplica un predicado de filtrado cuando el usuario cambia el ComboBox, sin recargar los datos.  
-**`PropertyValueFactory`** — enlaza cada columna de la `TableView` con el getter correspondiente de la clase `ErrorLexico` usando reflexión (por eso los métodos se llaman `getCodigo()`, `getCategoria()`, `getDescripcion()`).
+**`PropertyValueFactory`** — enlaza cada columna de la `TableView` con el getter correspondiente de la clase `ErrorLexico` usando reflexión.
 
 ---
 
@@ -145,7 +145,7 @@ private void mostrarTablaErroresLexicos() {
 
 ### 1.4 Clase interna integrada: `ErrorLexico`
 
-Clase **completamente nueva**, agregada al final de `MainFX.java` (antes del `}` de cierre de la clase).
+Clase **completamente nueva**, agregada al final de `MainFX.java`.
 
 ```java
 // INTEGRADO: modelo de datos para la TableView del catálogo
@@ -175,7 +175,6 @@ public static class ErrorLexico {
 
 ```java
 // INTEGRADO — shapes para dibujar el árbol visualmente
-import javafx.scene.shape.CubicCurve;   // reservado (no usado en versión final)
 import javafx.scene.shape.Ellipse;      // óvalos para nodos no-terminales
 import javafx.scene.shape.Line;         // líneas entre nodos padre e hijo
 import javafx.scene.shape.Rectangle;    // rectángulos para nodos terminales
@@ -206,14 +205,12 @@ btnArbol.setOnAction(e -> mostrarArbolDerivacion());
 
 toolbar.getChildren().addAll(
     lblTitulo, btnNuevo, btnAbrir, btnGuardar,
-    btnCompilar, btnErroresLexicos, btnArbol);  // <-- btnArbol agregado al final
+    btnCompilar, btnErroresLexicos, btnArbol);
 ```
 
 ---
 
 ### 2.3 Constantes integradas para el layout visual
-
-Agregadas como campos `private static final` en la clase `MainFX`, antes de los métodos:
 
 ```java
 // INTEGRADO — dimensiones naturales de los nodos (antes de aplicar escala)
@@ -228,17 +225,17 @@ private static final double PAD   = 36;  // margen exterior del canvas
 
 ---
 
-### 2.4 Métodos helpers integrados (acceso a tamaños por nodo)
+### 2.4 Métodos helpers integrados
 
 ```java
-// INTEGRADO — devuelven el ancho/alto natural de un nodo según si es terminal
+// Devuelven el ancho/alto natural de un nodo según si es terminal o no
 private double nw(TreeItem<String> n) {
     return isTerminal(n.getValue()) ? TW_N : RX_N * 2;
 }
 private double nh(TreeItem<String> n) {
     return isTerminal(n.getValue()) ? TH_N : RY_N * 2;
 }
-// Detecta si un nodo es terminal por la presencia del símbolo '→' en su etiqueta
+// Detecta nodos terminales (tokens) por la presencia de '→' en su etiqueta
 private boolean isTerminal(String label) {
     return label.contains("→");
 }
@@ -248,14 +245,14 @@ private boolean isTerminal(String label) {
 
 ### 2.5 Método integrado: `mostrarArbolDerivacion()`
 
-Método **completamente nuevo**. Orquesta el proceso completo: obtiene el código, ejecuta el lexer, construye el árbol lógico, calcula el layout y monta la UI con controles de zoom.
+Método **completamente nuevo**. Orquesta el proceso completo desde obtener el código hasta mostrar la pestaña.
 
 ```java
 private void mostrarArbolDerivacion() {
 
-    // BLOQUE 1: Validar que hay una pestaña activa con contenido
+    // BLOQUE 1: Validar que hay una pestaña activa
     Tab pestañaActiva = panelPestanas.getSelectionModel().getSelectedItem();
-    if (pestañaActiva == null) { ... return; }
+    if (pestañaActiva == null) { return; }
     TextArea editor = (TextArea) pestañaActiva.getContent();
     String codigo = editor.getText();
 
@@ -263,7 +260,7 @@ private void mostrarArbolDerivacion() {
     ManejadorErrores errores = new ManejadorErrores();
     LexerBase lexer = new LexerBase(codigo, errores);
     List<Token> tokens = lexer.tokenizar();
-    if (errores.tieneErrores()) { ... return; }  // Detener si hay errores léxicos
+    if (errores.tieneErrores()) { return; }
 
     // BLOQUE 3: Detectar el módulo (flujo, bd, redes)
     String modulo = "desconocido";
@@ -276,7 +273,7 @@ private void mostrarArbolDerivacion() {
 
     // BLOQUE 4: Construir el árbol lógico (TreeItem<String>)
     final TreeItem<String> raiz = new TreeItem<>("programa_" + modulo);
-    // Separar tokens en grupos por instrucción (';') respetando profundidad de '{}'
+    // Agrupar tokens por instrucción (';') respetando profundidad de '{}'
     List<List<Token>> instrucciones = new ArrayList<>();
     List<Token> actual = new ArrayList<>();
     int prof = 0;
@@ -295,91 +292,219 @@ private void mostrarArbolDerivacion() {
         if (n != null) raiz.getChildren().add(n);
     }
 
-    // BLOQUE 5: Calcular layout natural UNA SOLA VEZ
+    // BLOQUE 5: Calcular layout natural UNA SOLA VEZ (reutilizado por todos los zooms)
     final Map<TreeItem<String>, double[]> natPos = new HashMap<>();
     layoutTree(raiz, PAD + subtreeW(raiz) / 2.0, PAD, natPos);
     final double rawW = maxX(raiz, natPos) + PAD;
     final double rawH = maxY(raiz, natPos) + PAD;
-    // Escala automática para que el árbol quepa en 920×500 px
+    // Auto-escala: ajusta el árbol para que quepa en 920×500 px
     final double autoS = Math.min(1.0, Math.min(920.0 / rawW, 500.0 / rawH));
 
-    // BLOQUE 6: Estado de zoom compartido entre los botones (array mutable en lambda)
+    // BLOQUE 6: Renderizar el canvas inicial y crear el ScrollPane
     final double[] zoomS = { autoS };
     final ScrollPane scroll = buildScroll(renderCanvas(raiz, natPos, rawW, rawH, zoomS[0]));
 
-    // BLOQUE 7: Controles de zoom
-    Label  lblZoom    = new Label(pct(zoomS[0], autoS));
-    Button btnZoomOut = new Button("  −  ");
-    Button btnZoomIn  = new Button("  +  ");
-    Button btnFit     = new Button("Ajustar");
-
-    // Zoom in: aumenta 25% por clic, máximo 8× el autoS
-    btnZoomIn.setOnAction(ev -> {
-        zoomS[0] = Math.min(zoomS[0] * 1.25, autoS * 8.0);
-        lblZoom.setText(pct(zoomS[0], autoS));
-        scroll.setContent(renderCanvas(raiz, natPos, rawW, rawH, zoomS[0]));
-    });
-    // Zoom out: reduce 20% por clic, mínimo 30% del autoS
-    btnZoomOut.setOnAction(ev -> {
-        zoomS[0] = Math.max(zoomS[0] * 0.8, autoS * 0.3);
-        lblZoom.setText(pct(zoomS[0], autoS));
-        scroll.setContent(renderCanvas(raiz, natPos, rawW, rawH, zoomS[0]));
-    });
-    // Ajustar: vuelve al autoS inicial
-    btnFit.setOnAction(ev -> {
-        zoomS[0] = autoS;
-        lblZoom.setText(pct(zoomS[0], autoS));
-        scroll.setContent(renderCanvas(raiz, natPos, rawW, rawH, zoomS[0]));
-    });
-
-    // BLOQUE 8: Botón Pantalla Completa con sus propios controles de zoom
-    Button btnPantallaCompleta = new Button("⛶  Pantalla Completa");
-    btnPantallaCompleta.setOnAction(ev -> {
-        double fsAutoS = Math.min(2.0, Math.min(1900.0 / rawW, 1000.0 / rawH));
-        double[] fsZoom = { fsAutoS };
-        final ScrollPane fsScroll = buildScroll(
-            renderCanvas(raiz, natPos, rawW, rawH, fsZoom[0]));
-        // Controles de zoom independientes para la ventana completa
-        Label fsLblZoom = new Label(pct(fsZoom[0], fsAutoS));
-        Button fsBtnOut = new Button("  −  ");
-        Button fsBtnIn  = new Button("  +  ");
-        Button fsBtnFit = new Button("Ajustar");
-        // ... misma lógica de zoom pero con fsZoom y fsScroll
-        Stage stage = new Stage();
-        stage.setMaximized(true);
-        stage.show();
-    });
-
-    // BLOQUE 9: Composición de la UI de la pestaña
-    HBox barraZoom = new HBox(4, btnZoomOut, lblZoom, btnZoomIn, btnFit);
-    HBox barraTop  = new HBox(10, titulo, barraZoom, btnPantallaCompleta);
-    VBox contenido = new VBox(5, barraTop, leyenda, scroll);
-    VBox.setVgrow(scroll, Priority.ALWAYS);
-
-    // BLOQUE 10: Crear pestaña (o actualizarla si ya existe)
-    String tabName = "Árbol — " + pestañaActiva.getText();
-    for (Tab t : panelPestanas.getTabs()) {
-        if (tabName.equals(t.getText())) {
-            t.setContent(contenido);
-            panelPestanas.getSelectionModel().select(t);
-            return;
-        }
-    }
-    Tab tab = new Tab(tabName, contenido);
-    panelPestanas.getTabs().add(tab);
-    panelPestanas.getSelectionModel().select(tab);
+    // BLOQUE 7: Controles de zoom (ver sección 2.6)
+    // BLOQUE 8: Botón Pantalla Completa (ver sección 2.7)
+    // BLOQUE 9 y 10: Composición de la UI y creación de la pestaña
 }
 ```
 
 ---
 
-### 2.6 Método integrado: `construirNodoRegla()`
+### 2.6 Cómo se crearon los botones de Zoom
 
-Método **completamente nuevo**. Recibe un grupo de tokens (una instrucción) y devuelve un `TreeItem<String>` etiquetado con el nombre de la regla gramatical que representa.
+Los botones de zoom se crean dentro de `mostrarArbolDerivacion()` (BLOQUE 7) después de calcular el layout. Son cuatro elementos visuales colocados en un `HBox`:
+
+| Elemento | Tipo JavaFX | Función |
+|----------|-------------|---------|
+| `btnZoomOut` | `Button` "−" | Reduce escala 20% por clic |
+| `lblZoom` | `Label` | Muestra el porcentaje actual |
+| `btnZoomIn` | `Button` "+" | Aumenta escala 25% por clic |
+| `btnFit` | `Button` "Ajustar" | Restablece al auto-ajuste inicial |
+
+**Código integrado:**
+```java
+// Estado de zoom: array mutable para ser capturado por las lambdas
+final double[] zoomS = { autoS };
+
+Label  lblZoom    = new Label(pct(zoomS[0], autoS));
+Button btnZoomOut = new Button("  −  ");
+Button btnZoomIn  = new Button("  +  ");
+Button btnFit     = new Button("Ajustar");
+
+// Zoom In: multiplica escala × 1.25, límite máximo = autoS × 8
+btnZoomIn.setOnAction(ev -> {
+    zoomS[0] = Math.min(zoomS[0] * 1.25, autoS * 8.0);
+    lblZoom.setText(pct(zoomS[0], autoS));
+    scroll.setContent(renderCanvas(raiz, natPos, rawW, rawH, zoomS[0]));
+});
+
+// Zoom Out: multiplica escala × 0.8, límite mínimo = autoS × 0.3
+btnZoomOut.setOnAction(ev -> {
+    zoomS[0] = Math.max(zoomS[0] * 0.8, autoS * 0.3);
+    lblZoom.setText(pct(zoomS[0], autoS));
+    scroll.setContent(renderCanvas(raiz, natPos, rawW, rawH, zoomS[0]));
+});
+
+// Ajustar: vuelve al autoS calculado al abrir la pestaña
+btnFit.setOnAction(ev -> {
+    zoomS[0] = autoS;
+    lblZoom.setText(pct(zoomS[0], autoS));
+    scroll.setContent(renderCanvas(raiz, natPos, rawW, rawH, zoomS[0]));
+});
+
+// Los cuatro elementos se colocan en una HBox integrada en la barra superior
+HBox barraZoom = new HBox(4, btnZoomOut, lblZoom, btnZoomIn, btnFit);
+barraZoom.setAlignment(Pos.CENTER_LEFT);
+HBox barraTop = new HBox(10, titulo, barraZoom, btnPantallaCompleta);
+```
+
+**Cómo funciona el zoom:** Cada botón modifica `zoomS[0]` (el factor de escala actual) y llama a `renderCanvas()` con el nuevo factor. Esto reconstruye el `Pane` con todas las posiciones y tamaños multiplicados por el nuevo factor y lo coloca en el mismo `ScrollPane` con `scroll.setContent(nuevoCanvas)`, sin crear una nueva pestaña.
+
+**Por qué `double[]` y no `double`:** Las lambdas de Java solo pueden capturar variables `effectively final`. Un array es `final` (siempre apunta al mismo objeto) pero su contenido sí puede modificarse, lo que permite que los tres botones compartan y modifiquen el mismo estado de zoom.
+
+---
+
+### 2.7 Cómo se creó el botón Pantalla Completa y su zoom
+
+El botón **"⛶ Pantalla Completa"** abre una nueva `Stage` (ventana separada) de JavaFX maximizada con sus **propios controles de zoom independientes** (BLOQUE 8 de `mostrarArbolDerivacion()`).
+
+**Código integrado:**
+```java
+Button btnPantallaCompleta = new Button("⛶  Pantalla Completa");
+btnPantallaCompleta.setStyle(
+    "-fx-background-color: #16a085; -fx-text-fill: white; -fx-font-weight: bold;");
+
+btnPantallaCompleta.setOnAction(ev -> {
+
+    // Auto-escala para pantalla grande (1900×1000 px), distinta a la de la pestaña
+    double fsAutoS = Math.min(2.0, Math.min(1900.0 / rawW, 1000.0 / rawH));
+    double[] fsZoom = { fsAutoS };  // estado de zoom propio de esta ventana
+
+    // ScrollPane propio de la ventana completa
+    final ScrollPane fsScroll = buildScroll(
+        renderCanvas(raiz, natPos, rawW, rawH, fsZoom[0]));
+
+    // Función de refresco local
+    Runnable fsRefresh = () -> fsScroll.setContent(
+        renderCanvas(raiz, natPos, rawW, rawH, fsZoom[0]));
+
+    // Controles de zoom independientes (misma lógica que en la pestaña)
+    Label  fsLblZoom = new Label(pct(fsZoom[0], fsAutoS));
+    Button fsBtnOut  = new Button("  −  ");
+    Button fsBtnIn   = new Button("  +  ");
+    Button fsBtnFit  = new Button("Ajustar");
+
+    fsBtnIn.setOnAction(e2 -> {
+        fsZoom[0] = Math.min(fsZoom[0] * 1.25, fsAutoS * 8.0);
+        fsLblZoom.setText(pct(fsZoom[0], fsAutoS));
+        fsRefresh.run();
+    });
+    fsBtnOut.setOnAction(e2 -> {
+        fsZoom[0] = Math.max(fsZoom[0] * 0.8, fsAutoS * 0.2);
+        fsLblZoom.setText(pct(fsZoom[0], fsAutoS));
+        fsRefresh.run();
+    });
+    fsBtnFit.setOnAction(e2 -> {
+        fsZoom[0] = fsAutoS;
+        fsLblZoom.setText(pct(fsZoom[0], fsAutoS));
+        fsRefresh.run();
+    });
+
+    // Barra superior con título y controles de zoom
+    Label fsLbl = new Label("Árbol de Derivación — " + pestañaActiva.getText());
+    HBox fsBarraZoom = new HBox(4, fsBtnOut, fsLblZoom, fsBtnIn, fsBtnFit);
+    HBox fsBarraTop  = new HBox(12, fsLbl, fsBarraZoom);
+    fsBarraTop.setStyle("-fx-padding: 8 10 4 10; -fx-background-color: #f8f9fa;");
+
+    // Composición y apertura de la nueva ventana
+    VBox root2 = new VBox(fsBarraTop, fsScroll);
+    VBox.setVgrow(fsScroll, Priority.ALWAYS);
+
+    Stage stage = new Stage();
+    stage.setTitle("Árbol de Derivación — Pantalla Completa");
+    stage.setScene(new javafx.scene.Scene(root2, 1200, 800));
+    stage.setMaximized(true);
+    stage.show();
+});
+```
+
+**Por qué el zoom de la ventana completa es independiente:** Cada apertura crea nuevos objetos `fsZoom`, `fsScroll` y botones que no comparten estado con la pestaña principal. Esto permite que el usuario tenga el árbol a 50% en la pestaña y a 200% en la ventana completa al mismo tiempo.
+
+**Por qué `fsAutoS` es diferente a `autoS`:** La pestaña tiene ~920×500 px, la ventana completa tiene ~1900×1000 px. Reutilizar el mismo `autoS` haría el árbol pequeño con mucho espacio vacío. Cada contexto calcula su propia escala óptima.
+
+---
+
+### 2.8 Cómo se genera el árbol visualmente
+
+La generación visual del árbol ocurre en tres fases secuenciales:
+
+#### Fase 1 — Construcción del árbol lógico: `construirNodoRegla()`
+
+Se agrupan los tokens por instrucción (separados por `;`, respetando profundidad de `{}`) y a cada grupo se le asigna una etiqueta de regla gramatical:
+
+```
+diagrama Flujo ;          →  cabecera
+inicio Arrancar ;         →  decl_inicio
+nodo A "desc" ;           →  decl_nodo_nodo
+Arrancar conecta A ;      →  instruccion_conexion
+tabla T { id: INT PK; }   →  bloque_tabla  →  atributos  →  decl_atributo
+```
+
+Los tokens individuales se convierten en hojas con `tokenItem()`, que los etiqueta con el formato `TIPO → 'lexema' [Línea N]`. La presencia de `→` en la etiqueta es la señal que usa `isTerminal()` para distinguir hojas de nodos internos.
+
+#### Fase 2 — Algoritmo de layout top-down: `layoutTree()` + `subtreeW()`
+
+Se calculan las posiciones `(cx, cy)` de cada nodo en coordenadas naturales (sin escala):
+
+```java
+// Ancho mínimo del subárbol
+subtreeW(n) = max(nw(n) + HGAP, suma de subtreeW de todos los hijos)
+
+// Posicionamiento recursivo top-down
+layoutTree(n, cx, topY):
+    pos[n] = (cx, topY + nh(n)/2)        // guarda el CENTRO del nodo
+    startX = cx - subtreeW(n) / 2        // inicio del primer hijo
+    para cada hijo h:
+        layoutTree(h, startX + subtreeW(h)/2, topY + nh(n) + VGAP)
+        startX += subtreeW(h)
+```
+
+#### Fase 3 — Renderizado escalado: `renderCanvas()` → `paintEdges()` + `paintNodes()`
+
+Se multiplican todas las posiciones por el factor `s` y se dibuja sobre un `Pane`:
+
+```java
+// 1. Escalar posiciones
+pos_escalada[n] = { natPos[n][0] * s, natPos[n][1] * s }
+
+// 2. Dibujar aristas (paintEdges)
+Line(pie_del_padre, cabeza_del_hijo)  // línea recta vertical
+
+// 3. Dibujar nodos (paintNodes)
+Ellipse(cx, cy, RX_N*s, RY_N*s)   // nodo no-terminal (regla gramatical)
+Rectangle(x, y, TW_N*s, TH_N*s)   // nodo terminal (token)
+```
+
+**Convención visual aplicada:**
+
+| Tipo de nodo | Forma | Color | Texto mostrado |
+|---|---|---|---|
+| Raíz (`prog_flujo`) | Óvalo oscuro (#1a252f) | Texto blanco | Nombre del programa |
+| No-terminal (regla) | Óvalo blanco con borde | Texto oscuro | Nombre de la regla |
+| Terminal (token) | Rectángulo blanco con borde | Texto oscuro | Solo el lexema: `'inicio'`, `';'` |
+
+El canvas resultante se coloca dentro del `ScrollPane`. Cada vez que cambia el zoom, `renderCanvas` se ejecuta con el nuevo `s` y su resultado reemplaza el contenido con `scroll.setContent(nuevoCanvas)`.
+
+---
+
+### 2.9 Método integrado: `construirNodoRegla()`
+
+Método **completamente nuevo**. Recibe un grupo de tokens y devuelve un `TreeItem<String>` con la regla gramatical correspondiente.
 
 ```java
 private TreeItem<String> construirNodoRegla(List<Token> grupo, String modulo) {
-    if (grupo.isEmpty()) return null;
     Token primero = grupo.get(0);
     String lex = primero.getLexema();
 
@@ -389,122 +514,34 @@ private TreeItem<String> construirNodoRegla(List<Token> grupo, String modulo) {
         for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
         return nodo;
     }
-
-    // Meta-instrucciones: "autor '...'; version '...';"
-    if (lex.equals("autor") || lex.equals("version") || lex.equals("tema")
-        || lex.equals("exportar") || lex.equals("importar")) {
+    // Meta-instrucciones: autor, version, tema, exportar, importar
+    if (lex.equals("autor") || lex.equals("version") || ...) {
         TreeItem<String> nodo = new TreeItem<>("meta_instruccion");
         for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
         return nodo;
     }
-
-    // --- Módulo FLUJO ---
+    // Módulo FLUJO
     if (modulo.equals("flujo")) {
-        if (lex.equals("inicio") || lex.equals("fin")) {
-            // "inicio Arrancar ;" → decl_inicio
-            TreeItem<String> nodo = new TreeItem<>("decl_" + lex);
-            for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
-            return nodo;
-        }
-        if (lex.equals("nodo") || lex.equals("condicion") || lex.equals("bucle")
-            || lex.equals("subproceso") || lex.equals("entrada")
-            || lex.equals("salida") || lex.equals("parada")) {
-            // "nodo A 'desc' ;" → decl_nodo_nodo
-            TreeItem<String> nodo = new TreeItem<>("decl_nodo_" + lex);
-            for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
-            return nodo;
-        }
-        // Busca el verbo 'conecta' → instruccion_conexion
-        for (Token t : grupo) {
-            if (t.getLexema().equals("conecta")) {
-                TreeItem<String> nodo = new TreeItem<>("instruccion_conexion");
-                for (Token tk : grupo) nodo.getChildren().add(tokenItem(tk));
-                return nodo;
-            }
-        }
+        if (lex.equals("inicio") || lex.equals("fin"))
+            return new TreeItem<>("decl_" + lex);  // + hijos
+        if (lex.equals("nodo") || lex.equals("condicion") || ...)
+            return new TreeItem<>("decl_nodo_" + lex);
+        // Si contiene 'conecta' → instruccion_conexion
     }
-
-    // --- Módulo BD ---
-    if (modulo.equals("bd")) {
-        if (lex.equals("tabla") || lex.equals("vista")
-            || lex.equals("esquema") || lex.equals("paquete")) {
-            // Bloque con {} → agrupa nombre + nodo "atributos" con hijos decl_atributo
-            TreeItem<String> nodo = new TreeItem<>("bloque_" + lex);
-            // Agrega nombre de la tabla
-            if (grupo.size() > 1) nodo.getChildren().add(tokenItem(grupo.get(1)));
-            // Agrupa los atributos dentro de {}
-            TreeItem<String> bloque = new TreeItem<>("atributos");
-            boolean dentro = false;
-            List<Token> atribActual = new ArrayList<>();
-            for (int i = 2; i < grupo.size(); i++) {
-                Token t = grupo.get(i);
-                if (t.getTipo() == Token.Tipo.LLAVE_IZQ) { dentro = true; continue; }
-                if (t.getTipo() == Token.Tipo.LLAVE_DER) { dentro = false; continue; }
-                if (dentro) {
-                    atribActual.add(t);
-                    if (t.getTipo() == Token.Tipo.PUNTO_Y_COMA) {
-                        TreeItem<String> atrib = new TreeItem<>("decl_atributo");
-                        for (Token at : atribActual) atrib.getChildren().add(tokenItem(at));
-                        bloque.getChildren().add(atrib);
-                        atribActual.clear();
-                    }
-                }
-            }
-            nodo.getChildren().add(bloque);
-            return nodo;
-        }
-        if (lex.equals("procedimiento") || lex.equals("funcion") || lex.equals("indice")
-            || lex.equals("disparador") || lex.equals("secuencia")) {
-            TreeItem<String> nodo = new TreeItem<>("decl_" + lex);
-            for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
-            return nodo;
-        }
-        // Busca 'relaciona' → instruccion_relacion
-        for (Token t : grupo) {
-            if (t.getLexema().equals("relaciona")) {
-                TreeItem<String> nodo = new TreeItem<>("instruccion_relacion");
-                for (Token tk : grupo) nodo.getChildren().add(tokenItem(tk));
-                return nodo;
-            }
-        }
-    }
-
-    // --- Módulo REDES ---
-    if (modulo.equals("redes")) {
-        if (lex.equals("dispositivo") || lex.equals("nube") || lex.equals("vlan")
-            || lex.equals("subred") || lex.equals("cluster") || lex.equals("tunel")
-            || lex.equals("zona") || lex.equals("puerto") || lex.equals("politica")) {
-            // dispositivo Nombre Tipo { Prop: "val"; };
-            TreeItem<String> nodo = new TreeItem<>("decl_dispositivo");
-            // Agrega cabecera (nombre y tipo) y bloque de propiedades
-            // ... lógica similar a BD para {} internos
-            return nodo;
-        }
-        // Busca 'enlaza' → instruccion_enlace
-        for (Token t : grupo) {
-            if (t.getLexema().equals("enlaza")) {
-                TreeItem<String> nodo = new TreeItem<>("instruccion_enlace");
-                for (Token tk : grupo) nodo.getChildren().add(tokenItem(tk));
-                return nodo;
-            }
-        }
-    }
-    // Si no reconoció la instrucción
-    TreeItem<String> nodo = new TreeItem<>("instruccion_desconocida");
-    for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
-    return nodo;
+    // Módulo BD: tabla/vista/esquema → bloque con atributos agrupados
+    // Módulo REDES: dispositivo → decl_dispositivo con propiedades
 }
 ```
 
 ---
 
-### 2.7 Método integrado: `tokenItem()`
+### 2.10 Método integrado: `tokenItem()`
 
 Método **completamente nuevo**. Crea el nodo hoja del árbol para un token terminal.
 
 ```java
 private TreeItem<String> tokenItem(Token t) {
-    // Formato con '→' para que isTerminal() lo reconozca
+    // El símbolo '→' distingue terminales de no-terminales (isTerminal lo detecta)
     String etiqueta = t.getTipo().name() + "  →  '"
                     + t.getLexema() + "'  [Línea " + t.getLinea() + "]";
     return new TreeItem<>(etiqueta);
@@ -513,9 +550,9 @@ private TreeItem<String> tokenItem(Token t) {
 
 ---
 
-### 2.8 Método integrado: `pct()`
+### 2.11 Método integrado: `pct()`
 
-Método **completamente nuevo**. Calcula el porcentaje de zoom relativo al autoS.
+Método **completamente nuevo**. Calcula el porcentaje de zoom relativo al `autoS`.
 
 ```java
 private String pct(double current, double base) {
@@ -525,15 +562,15 @@ private String pct(double current, double base) {
 
 ---
 
-### 2.9 Método integrado: `renderCanvas()`
+### 2.12 Método integrado: `renderCanvas()`
 
-Método **completamente nuevo**. Dibuja el árbol en un `Pane` a una escala dada, multiplicando todas las posiciones por `s` antes de dibujar.
+Método **completamente nuevo**. Dibuja el árbol en un `Pane` a una escala exacta.
 
 ```java
 private Pane renderCanvas(TreeItem<String> raiz,
                            Map<TreeItem<String>, double[]> nat,
                            double rawW, double rawH, double s) {
-    // Crear mapa de posiciones escaladas
+    // Multiplicar todas las posiciones por s antes de dibujar
     Map<TreeItem<String>, double[]> pos = new HashMap<>();
     for (var e : nat.entrySet())
         pos.put(e.getKey(),
@@ -543,26 +580,23 @@ private Pane renderCanvas(TreeItem<String> raiz,
     canvas.setStyle("-fx-background-color: white;");
     canvas.setPrefSize(rawW * s, rawH * s);
     canvas.setMaxSize(rawW * s, rawH * s);
-
-    paintEdges(raiz, pos, canvas, s);  // primero líneas (detrás)
-    paintNodes(raiz, pos, canvas, s);  // luego nodos (encima)
+    paintEdges(raiz, pos, canvas, s);
+    paintNodes(raiz, pos, canvas, s);
     return canvas;
 }
 ```
 
 ---
 
-### 2.10 Métodos integrados: `buildCanvas()` y `buildScroll()`
+### 2.13 Métodos integrados: `buildCanvas()` y `buildScroll()`
 
-Métodos **completamente nuevos**. Calculan el auto-escala y configuran el `ScrollPane`.
+Métodos **completamente nuevos**.
 
 ```java
-// buildCanvas sin argumentos: usa 920×500 como área objetivo
 private Pane buildCanvas(TreeItem<String> raiz) {
     return buildCanvas(raiz, 920, 500);
 }
 
-// buildCanvas con área objetivo: calcula scale y llama a renderCanvas
 private Pane buildCanvas(TreeItem<String> raiz, double targetW, double targetH) {
     Map<TreeItem<String>, double[]> nat = new HashMap<>();
     layoutTree(raiz, PAD + subtreeW(raiz) / 2.0, PAD, nat);
@@ -572,11 +606,10 @@ private Pane buildCanvas(TreeItem<String> raiz, double targetW, double targetH) 
     return renderCanvas(raiz, nat, rawW, rawH, s);
 }
 
-// buildScroll: configura ScrollPane con pannable y sin estirar contenido
 private ScrollPane buildScroll(Pane canvas) {
     ScrollPane sc = new ScrollPane(canvas);
     sc.setPannable(true);
-    sc.setFitToWidth(false);   // NO estirar — respetar el tamaño calculado
+    sc.setFitToWidth(false);   // NO estirar — respetar tamaño calculado
     sc.setFitToHeight(false);
     sc.setStyle("-fx-background: white; -fx-background-color: white;");
     return sc;
@@ -585,9 +618,9 @@ private ScrollPane buildScroll(Pane canvas) {
 
 ---
 
-### 2.11 Método integrado: `subtreeW()`
+### 2.14 Método integrado: `subtreeW()`
 
-Método **completamente nuevo**. Calcula el ancho mínimo del subárbol centrado en el nodo `n`.
+Método **completamente nuevo**.
 
 ```java
 private double subtreeW(TreeItem<String> n) {
@@ -600,18 +633,16 @@ private double subtreeW(TreeItem<String> n) {
 
 ---
 
-### 2.12 Método integrado: `layoutTree()`
+### 2.15 Método integrado: `layoutTree()`
 
-Método **completamente nuevo**. Algoritmo de posicionamiento top-down que asigna el centro `(cx, cy)` a cada nodo.
+Método **completamente nuevo**. Asigna posiciones top-down a cada nodo.
 
 ```java
 private void layoutTree(TreeItem<String> n, double cx, double topY,
                          Map<TreeItem<String>, double[]> pos) {
-    // Guarda el CENTRO del nodo
     pos.put(n, new double[]{ cx, topY + nh(n) / 2.0 });
     if (n.getChildren().isEmpty()) return;
 
-    // Distribuye los hijos horizontalmente
     double startX    = cx - subtreeW(n) / 2.0;
     double childTopY = topY + nh(n) + VGAP;
 
@@ -625,9 +656,9 @@ private void layoutTree(TreeItem<String> n, double cx, double topY,
 
 ---
 
-### 2.13 Métodos integrados: `maxX()` y `maxY()`
+### 2.16 Métodos integrados: `maxX()` y `maxY()`
 
-Métodos **completamente nuevos**. Calculan los límites del árbol para dimensionar el canvas correctamente.
+Métodos **completamente nuevos**.
 
 ```java
 private double maxX(TreeItem<String> n, Map<TreeItem<String>, double[]> pos) {
@@ -636,7 +667,6 @@ private double maxX(TreeItem<String> n, Map<TreeItem<String>, double[]> pos) {
     for (var c : n.getChildren()) m = Math.max(m, maxX(c, pos));
     return m;
 }
-
 private double maxY(TreeItem<String> n, Map<TreeItem<String>, double[]> pos) {
     double[] p = pos.get(n);
     double m = p[1] + nh(n) / 2.0;
@@ -647,9 +677,9 @@ private double maxY(TreeItem<String> n, Map<TreeItem<String>, double[]> pos) {
 
 ---
 
-### 2.14 Método integrado: `paintEdges()`
+### 2.17 Método integrado: `paintEdges()`
 
-Método **completamente nuevo**. Dibuja `Line` entre el centro-inferior de cada padre y el centro-superior de cada hijo.
+Método **completamente nuevo**. Dibuja `Line` entre el pie de cada padre y la cabeza de cada hijo.
 
 ```java
 private void paintEdges(TreeItem<String> n,
@@ -657,27 +687,26 @@ private void paintEdges(TreeItem<String> n,
                          Pane c, double s) {
     double[] pp  = pos.get(n);
     double   px  = pp[0];
-    double   pyBot = pp[1] + nh(n) * s / 2.0;  // pie del padre
+    double   pyBot = pp[1] + nh(n) * s / 2.0;
 
     for (TreeItem<String> h : n.getChildren()) {
-        double[] ph   = pos.get(h);
-        double   hyTop = ph[1] - nh(h) * s / 2.0; // cabeza del hijo
+        double[] ph    = pos.get(h);
+        double   hyTop = ph[1] - nh(h) * s / 2.0;
 
         Line l = new Line(px, pyBot, ph[0], hyTop);
         l.setStroke(Color.web("#333333"));
         l.setStrokeWidth(Math.max(0.5, s));
         c.getChildren().add(l);
-
-        paintEdges(h, pos, c, s); // llamada recursiva
+        paintEdges(h, pos, c, s);
     }
 }
 ```
 
 ---
 
-### 2.15 Método integrado: `paintNodes()`
+### 2.18 Método integrado: `paintNodes()`
 
-Método **completamente nuevo**. Dibuja `Ellipse` (no-terminal) o `Rectangle` (terminal) con texto centrado dentro de cada nodo.
+Método **completamente nuevo**. Dibuja `Ellipse` (no-terminal) o `Rectangle` (terminal) con texto.
 
 ```java
 private void paintNodes(TreeItem<String> n,
@@ -686,36 +715,26 @@ private void paintNodes(TreeItem<String> n,
     double[] p    = pos.get(n);
     String   lbl  = n.getValue();
     boolean  term = isTerminal(lbl);
-    double   fs   = Math.max(7.5, 10.0 * s);  // fuente mínima legible: 7.5px
+    double   fs   = Math.max(7.5, 10.0 * s);  // fuente mínima: 7.5px
 
     if (term) {
-        // TERMINAL → Rectángulo blanco con borde oscuro
+        // TERMINAL → Rectángulo blanco con borde oscuro + lexema
         double tw = TW_N * s, th = TH_N * s;
-        Rectangle r = new Rectangle(p[0] - tw/2.0, p[1] - th/2.0, tw, th);
+        Rectangle r = new Rectangle(p[0]-tw/2.0, p[1]-th/2.0, tw, th);
         r.setFill(Color.WHITE);
         r.setStroke(Color.web("#333333"));
         r.setStrokeWidth(Math.max(0.5, s));
         c.getChildren().add(r);
-        // Solo el lexema: 'inicio', ';', 'Flujo', etc.
-        c.getChildren().add(mkText(extractLexema(lbl),
-            p[0] - tw/2.0, p[1] + fs * 0.4, tw,
-            Font.font("Monospaced", FontWeight.NORMAL, fs),
-            Color.web("#111111")));
+        c.getChildren().add(mkText(extractLexema(lbl), ...));
     } else {
-        // NO-TERMINAL → Óvalo (Ellipse)
+        // NO-TERMINAL → Óvalo blanco (raíz: oscuro) + nombre de la regla
         double rx = RX_N * s, ry = RY_N * s;
         boolean root = lbl.startsWith("programa_");
-
         Ellipse oval = new Ellipse(p[0], p[1], rx, ry);
         oval.setFill(root ? Color.web("#1a252f") : Color.WHITE);
         oval.setStroke(root ? Color.BLACK : Color.web("#222222"));
-        oval.setStrokeWidth(Math.max(0.6, 1.3 * s));
         c.getChildren().add(oval);
-        // Nombre de la regla gramatical (abreviado)
-        c.getChildren().add(mkText(shortLabel(lbl),
-            p[0] - rx, p[1] + fs * 0.4, rx * 2,
-            Font.font("System", FontWeight.BOLD, fs),
-            root ? Color.WHITE : Color.web("#111111")));
+        c.getChildren().add(mkText(shortLabel(lbl), ...));
     }
     for (TreeItem<String> h : n.getChildren()) paintNodes(h, pos, c, s);
 }
@@ -723,36 +742,30 @@ private void paintNodes(TreeItem<String> n,
 
 ---
 
-### 2.16 Métodos auxiliares integrados: `mkText()`, `shortLabel()`, `extractLexema()`
+### 2.19 Métodos auxiliares integrados: `mkText()`, `shortLabel()`, `extractLexema()`
 
 Métodos **completamente nuevos**.
 
 ```java
-// Crea un objeto Text centrado dentro de un nodo
+// Crea un Text centrado dentro de un nodo
 private javafx.scene.text.Text mkText(String txt, double x, double y,
                                        double w, Font f, Color col) {
     javafx.scene.text.Text t = new javafx.scene.text.Text(txt);
-    t.setFont(f);
-    t.setFill(col);
+    t.setFont(f); t.setFill(col);
     t.setTextAlignment(TextAlignment.CENTER);
     t.setWrappingWidth(w - 2);
-    t.setX(x + 1);
-    t.setY(y);
+    t.setX(x + 1); t.setY(y);
     return t;
 }
 
-// Abrevia etiquetas largas para que quepan dentro del óvalo
+// Abrevia etiquetas largas para que quepan en el óvalo (104px de ancho)
 private String shortLabel(String lbl) {
-    return lbl
-        .replace("instruccion_", "inst_")
-        .replace("programa_",    "prog_")
-        .replace("declaracion_", "decl_")
-        .replace("bloque_",      "blq_")
-        .replace("meta_instruccion", "meta")
-        .replace("propiedades",  "props");
+    return lbl.replace("instruccion_","inst_").replace("programa_","prog_")
+              .replace("declaracion_","decl_").replace("bloque_","blq_")
+              .replace("meta_instruccion","meta").replace("propiedades","props");
 }
 
-// Extrae el lexema del formato interno "TIPO  →  'lexema'  [Línea N]"
+// Extrae el lexema del formato "TIPO  →  'lexema'  [Línea N]"
 private String extractLexema(String label) {
     int a = label.indexOf("'"), b = label.lastIndexOf("'");
     if (a >= 0 && b > a) return label.substring(a, b + 1);
@@ -764,37 +777,37 @@ private String extractLexema(String label) {
 
 ## Tabla Resumen de Cambios
 
-### `MainFX.java` — líneas modificadas vs líneas originales
+### `MainFX.java` — líneas modificadas vs integradas
 
-| Sección | Tipo de cambio | Descripción |
-|---------|---------------|-------------|
-| Imports (líneas 5–7, 12, 20–24, 30–31) | **INTEGRADO** | 9 imports nuevos para colecciones, shapes y texto |
-| `start()` línea 82–90 | **MODIFICADO** | Se agregaron 2 botones nuevos y se actualizó `toolbar.getChildren().addAll()` |
-| `mostrarTablaErroresLexicos()` | **INTEGRADO** | Método nuevo — ~80 líneas |
-| `ErrorLexico` (clase interna) | **INTEGRADO** | Clase nueva — 15 líneas |
-| `mostrarArbolDerivacion()` | **INTEGRADO** | Método nuevo — ~130 líneas |
-| `construirNodoRegla()` | **INTEGRADO** | Método nuevo — ~95 líneas |
-| `tokenItem()` | **INTEGRADO** | Método nuevo — 4 líneas |
-| `pct()` | **INTEGRADO** | Método nuevo — 3 líneas |
-| `renderCanvas()` | **INTEGRADO** | Método nuevo — 15 líneas |
-| `buildCanvas()` x2 | **INTEGRADO** | Métodos nuevos — 12 líneas |
-| `buildScroll()` | **INTEGRADO** | Método nuevo — 8 líneas |
-| `subtreeW()` | **INTEGRADO** | Método nuevo — 5 líneas |
-| `layoutTree()` | **INTEGRADO** | Método nuevo — 12 líneas |
-| `maxX()` / `maxY()` | **INTEGRADO** | Métodos nuevos — 8 líneas |
-| `paintEdges()` | **INTEGRADO** | Método nuevo — 14 líneas |
-| `paintNodes()` | **INTEGRADO** | Método nuevo — 35 líneas |
-| `mkText()` | **INTEGRADO** | Método nuevo — 9 líneas |
-| `shortLabel()` | **INTEGRADO** | Método nuevo — 6 líneas |
-| `extractLexema()` | **INTEGRADO** | Método nuevo — 4 líneas |
-| `nw()` / `nh()` / `isTerminal()` | **INTEGRADO** | 3 one-liners auxiliares |
-| Constantes `RX_N`, `RY_N`, etc. | **INTEGRADO** | 7 constantes `static final` |
+| Elemento | Tipo | Descripción |
+|----------|------|-------------|
+| Imports (9 nuevos) | **INTEGRADO** | Colecciones, shapes, TextAlignment, ArrayList, HashMap |
+| `start()` — barra de herramientas | **MODIFICADO** | 2 botones nuevos agregados al `toolbar` |
+| `mostrarTablaErroresLexicos()` | **INTEGRADO** | Método nuevo — Catálogo de Errores con TableView |
+| `ErrorLexico` (clase interna) | **INTEGRADO** | Modelo de datos para la TableView |
+| `mostrarArbolDerivacion()` | **INTEGRADO** | Método nuevo — orquesta todo el árbol |
+| `construirNodoRegla()` | **INTEGRADO** | Identifica reglas gramaticales por grupo de tokens |
+| `tokenItem()` | **INTEGRADO** | Crea nodo hoja para un token terminal |
+| `pct()` | **INTEGRADO** | Formatea porcentaje de zoom |
+| `renderCanvas()` | **INTEGRADO** | Dibuja el árbol a escala dada |
+| `buildCanvas()` x2 | **INTEGRADO** | Calcula auto-escala y llama a renderCanvas |
+| `buildScroll()` | **INTEGRADO** | Crea ScrollPane configurado |
+| `subtreeW()` | **INTEGRADO** | Calcula ancho mínimo del subárbol |
+| `layoutTree()` | **INTEGRADO** | Asigna posiciones top-down a cada nodo |
+| `maxX()` / `maxY()` | **INTEGRADO** | Calculan límites del árbol para el canvas |
+| `paintEdges()` | **INTEGRADO** | Dibuja líneas padre → hijo |
+| `paintNodes()` | **INTEGRADO** | Dibuja óvalos y rectángulos con texto |
+| `mkText()` | **INTEGRADO** | Texto centrado dentro de un nodo |
+| `shortLabel()` | **INTEGRADO** | Abrevia etiquetas largas |
+| `extractLexema()` | **INTEGRADO** | Extrae el lexema del formato interno del token |
+| `nw()` / `nh()` / `isTerminal()` | **INTEGRADO** | Helpers de tamaño y tipo de nodo |
+| 7 constantes `static final` | **INTEGRADO** | Dimensiones del layout visual |
 
 ### Archivos nuevos creados
 
 | Archivo | Descripción |
 |---------|-------------|
-| `pruebas.md` | Documento con 25 casos de prueba y catálogo de 36 errores |
+| `pruebas.md` | 25 casos de prueba con resultados y catálogo de 36 errores |
 | `DocumentacionJavier.md` | Este documento |
 
 ---
