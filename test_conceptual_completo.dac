@@ -1,0 +1,31 @@
+autor "Estudiante DAC";
+version "1.0";
+diagrama Conceptual;
+
+// Nodos principales
+concepto Compilador "Programa que transforma codigo fuente en ejecutable";
+concepto Lenguaje "Sistema formal de reglas para escribir programas";
+concepto Codigo "Texto escrito por el programador en un lenguaje";
+
+// Categorias
+categoria Fases "Etapas del proceso de compilacion";
+categoria Errores "Tipos de fallos detectados por el compilador";
+
+// Propiedades
+propiedad Eficiencia "Velocidad con que el compilador procesa el codigo";
+propiedad Portabilidad "Capacidad de ejecutarse en distintos sistemas";
+propiedad Legibilidad "Facilidad para leer y entender el codigo";
+
+// Relaciones: agrupa
+Fases agrupa Compilador;
+Errores agrupa Lenguaje;
+
+// Relaciones: asocia
+Compilador asocia Lenguaje;
+Lenguaje asocia Codigo;
+Compilador asocia Eficiencia;
+Codigo asocia Legibilidad;
+
+// Relaciones: depende
+Eficiencia depende Codigo;
+Portabilidad depende Lenguaje;
