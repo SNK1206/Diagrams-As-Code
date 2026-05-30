@@ -73,7 +73,7 @@ public class ParserBase {
                             manejadorErrores.reportarError(t.getLinea(), "Sintáctico", "Falta ';' en la cabecera.", "Termina la declaración con punto y coma.");
                         }
                     } else {
-                        manejadorErrores.reportarError(t.getLinea(), "Sintáctico", "Falta el tipo de diagrama.", "Especifica 'Flujo', 'BD' o 'Redes'.");
+                        manejadorErrores.reportarError(t.getLinea(), "Sintáctico", "Falta el tipo de diagrama.", "Especifica 'Flujo', 'BD', 'Redes', 'Conceptual' o 'UML'.");
                     }
                     break;
                 }
@@ -97,8 +97,14 @@ public class ParserBase {
             case "redes":
                 com.diagramas.modulos.redes.RedesParser parserRedes = new com.diagramas.modulos.redes.RedesParser(tokensRestantes, tablaSimbolos, manejadorErrores);
                 return parserRedes.parsear();
+            case "conceptual":
+                com.diagramas.modulos.conceptual.ConceptualParser parserConceptual = new com.diagramas.modulos.conceptual.ConceptualParser(tokensRestantes, tablaSimbolos, manejadorErrores);
+                return parserConceptual.parsear();
+            case "uml":
+                com.diagramas.modulos.uml.UMLParser parserUML = new com.diagramas.modulos.uml.UMLParser(tokensRestantes, tablaSimbolos, manejadorErrores);
+                return parserUML.parsear();
             default:
-                manejadorErrores.reportarError(1, "Semántico", "Módulo '" + tipoDiagrama + "' no reconocido.", "Los módulos válidos son: Flujo, BD, Redes.");
+                manejadorErrores.reportarError(1, "Semántico", "Módulo '" + tipoDiagrama + "' no reconocido.", "Los módulos válidos son: Flujo, BD, Redes, Conceptual, UML.");
                 return null;
         }
     }

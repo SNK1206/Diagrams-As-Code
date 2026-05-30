@@ -22,6 +22,19 @@ public class ManejadorErrores {
         errores.add(formato);
     }
 
+    public void reportarError(String codigo, int linea, String contexto, String mensaje, String sugerencia) {
+        String codigoStr = (codigo != null && !codigo.isEmpty()) ? " [" + codigo + "]" : "";
+        String formato = String.format(
+                "==================================================\n" +
+                        "❌ ERROR DE COMPILACIÓN%s [Línea %d] [Contexto: %s]\n" +
+                        "💡 Detalle: %s\n" +
+                        "🔍 Sugerencia: %s\n" +
+                        "==================================================",
+                codigoStr, linea, contexto, mensaje, sugerencia
+        );
+        errores.add(formato);
+    }
+
     public void reportarErrorLéxico(int linea, char caracterInvalido) {
         reportarError(
                 linea,

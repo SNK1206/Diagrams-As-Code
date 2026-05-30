@@ -1,0 +1,51 @@
+autor "Estudiante DAC";
+version "1.0";
+diagrama UML;
+
+// Clases con atributos y metodos
+clase Vehiculo {
+    atributo velocidad : INT;
+    atributo marca : STRING;
+    atributo anio : INT;
+    metodo acelerar : VOID;
+    metodo frenar : BOOLEAN;
+    metodo obtenerMarca : STRING;
+}
+
+clase Auto {
+    atributo puertas : INT;
+    atributo esElectrico : BOOLEAN;
+    metodo abrirCofre : VOID;
+    metodo cargarBateria : VOID;
+}
+
+clase Motocicleta {
+    atributo cilindrada : INT;
+    metodo hacerCaballito : VOID;
+}
+
+// Clase sin miembros (valida)
+clase Componente {
+}
+
+// Interfaces
+interfaz Serializable;
+interfaz Conducible;
+
+// Enumeraciones
+enum EstadoMotor;
+enum TipoCombustible;
+
+// Relaciones: extiende
+Auto extiende Vehiculo;
+Motocicleta extiende Vehiculo;
+
+// Relaciones: implementa
+Auto implementa Serializable;
+Auto implementa Conducible;
+Motocicleta implementa Conducible;
+
+// Relaciones: usa
+Auto usa EstadoMotor;
+Auto usa TipoCombustible;
+Vehiculo usa Componente;
