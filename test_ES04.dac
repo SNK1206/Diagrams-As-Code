@@ -1,0 +1,5 @@
+autor "Test ES04";
+version "1.0";
+// ES04: falta el tipo de diagrama despues de 'diagrama'
+// Esperado: solo ES04, NO debe salir ES05
+diagrama;

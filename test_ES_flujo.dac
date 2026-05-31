@@ -1,0 +1,69 @@
+autor "Test ES Flujo ES06-ES13";
+version "1.0";
+diagrama Flujo;
+
+// ============================================================
+// ES06: token inesperado (llave en lugar de identificador)
+// Esperado: 1 error ES06. 'inicio Arranque;' se procesa ok.
+// ============================================================
+{
+inicio Arranque;
+
+// ============================================================
+// ES07: falta nombre despues de 'inicio'
+// Esperado: 1 error ES07. ';' inmediato = sin cascada.
+// Anti-cascada: 'fin Termino;' se procesa correctamente.
+// ============================================================
+inicio;
+fin Termino;
+
+// ============================================================
+// ES08: falta ';' al final de nodo simple
+// Esperado: 1 error ES08. Recovery consume 'fin Pausa;'.
+// Anti-cascada: 'nodo Tarea ...' se procesa correctamente.
+// ============================================================
+inicio InicioB
+fin Pausa;
+nodo Tarea "tarea valida de prueba";
+
+// ============================================================
+// ES09: falta descripcion entre comillas
+// Esperado: 1 error ES09. ';' inmediato = sin cascada.
+// Anti-cascada: 'condicion Decision ...' se procesa ok.
+// ============================================================
+nodo SinDescripcion;
+condicion Decision "ocurrio un error?";
+
+// ============================================================
+// ES10: falta ';' al final de nodo con texto
+// Esperado: 1 error ES10. Recovery consume 'fin F2;'.
+// Anti-cascada: 'inicio InicioC;' se procesa correctamente.
+// ============================================================
+nodo TareaB "descripcion de tarea"
+fin F2;
+inicio InicioC;
+
+// ============================================================
+// ES11: falta destino en 'conecta'
+// Esperado: 1 error ES11. ';' inmediato = sin cascada.
+// Anti-cascada: 'Arranque conecta Tarea;' se procesa ok.
+// ============================================================
+Arranque conecta;
+Arranque conecta Tarea;
+
+// ============================================================
+// ES12: falta ';' al finalizar conexion
+// Esperado: 1 error ES12. Recovery consume 'fin FinX;'.
+// Anti-cascada: 'InicioC conecta Decision;' se procesa ok.
+// ============================================================
+Tarea conecta Decision
+fin FinX;
+InicioC conecta Decision;
+
+// ============================================================
+// ES13: verbo invalido ('enlaza' no existe en Flujo)
+// Esperado: 1 error ES13. Recovery consume hasta ';'.
+// Anti-cascada: 'Decision conecta Termino;' se procesa ok.
+// ============================================================
+Arranque enlaza Decision;
+Decision conecta Termino;

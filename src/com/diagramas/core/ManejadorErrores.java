@@ -4,41 +4,40 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ManejadorErrores {
+    private static final int MAX_ERRORES = 1000;
+
     private final List<String> errores;
+    private boolean limiteSuperado = false;
 
     public ManejadorErrores() {
         this.errores = new ArrayList<>();
     }
 
-    public void reportarError(int linea, String contexto, String mensaje, String sugerencia) {
+    public void reportarError(String codigo, int linea, String contexto, String mensaje, String consejo) {
+        if (errores.size() >= MAX_ERRORES) { limiteSuperado = true; return; }
+
+        boolean esLexico = contexto.contains("Léxico") || contexto.contains("Lexico");
+        String tipo = esLexico ? "LÉXICO" : "SINTÁCTICO";
+        String etiqueta = (codigo == null || codigo.isEmpty()) ? "" : "[" + codigo + "] ";
+
         String formato = String.format(
                 "==================================================\n" +
-                        "❌ ERROR DE COMPILACIÓN [Línea %d] [Contexto: %s]\n" +
-                        "💡 Detalle: %s\n" +
-                        "🔍 Sugerencia: %s\n" +
-                        "==================================================",
-                linea, contexto, mensaje, sugerencia
+                "[ERROR] %s%s [Linea %d]\n" +
+                "Detalle: %s\n" +
+                "Consejo: %s\n" +
+                "==================================================",
+                etiqueta, tipo, linea, mensaje, consejo
         );
         errores.add(formato);
     }
 
-    public void reportarError(String codigo, int linea, String contexto, String mensaje, String sugerencia) {
-        String codigoStr = (codigo != null && !codigo.isEmpty()) ? " [" + codigo + "]" : "";
-        String formato = String.format(
-                "==================================================\n" +
-                        "❌ ERROR DE COMPILACIÓN%s [Línea %d] [Contexto: %s]\n" +
-                        "💡 Detalle: %s\n" +
-                        "🔍 Sugerencia: %s\n" +
-                        "==================================================",
-                codigoStr, linea, contexto, mensaje, sugerencia
-        );
-        errores.add(formato);
+    public void reportarError(int linea, String contexto, String mensaje, String consejo) {
+        reportarError("", linea, contexto, mensaje, consejo);
     }
 
     public void reportarErrorLéxico(int linea, char caracterInvalido) {
         reportarError(
-                linea,
-                "Análisis Léxico",
+                "EL01", linea, "Análisis Léxico",
                 "El carácter '" + caracterInvalido + "' no pertenece al alfabeto del lenguaje.",
                 "Elimina el carácter o verifica si querías escribir un identificador o una cadena entre comillas \".\""
         );
@@ -52,9 +51,16 @@ public class ManejadorErrores {
         for (String error : errores) {
             System.err.println(error);
         }
+        if (limiteSuperado) {
+            System.err.println("==================================================");
+            System.err.println("[!] Se suprimieron errores adicionales para evitar cascada.");
+            System.err.println("    Corrige los errores mostrados y vuelve a compilar.");
+            System.err.println("==================================================");
+        }
     }
 
     public void limpiar() {
         errores.clear();
+        limiteSuperado = false;
     }
 }

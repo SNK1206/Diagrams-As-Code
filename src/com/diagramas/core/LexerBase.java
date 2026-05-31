@@ -72,35 +72,71 @@ public class LexerBase {
 
             // 4. Cadenas de texto literales (entre comillas dobles)
             if (actual == '"') {
-                int colInicio = columnaActual;   // columna de la comilla de apertura
+                int colInicio = columnaActual;
                 StringBuilder sb = new StringBuilder();
-                columnaActual++; indice++;       // saltar comilla de apertura
-                while (indice < codigo.length() && codigo.charAt(indice) != '"') {
+                columnaActual++; indice++;  // saltar comilla de apertura
+                // EL02: terminar también en \n (cadena no puede abarcar varias líneas)
+                while (indice < codigo.length() && codigo.charAt(indice) != '"' && codigo.charAt(indice) != '\n') {
                     sb.append(codigo.charAt(indice));
                     columnaActual++;
                     indice++;
                 }
-                if (indice >= codigo.length()) {
-                    manejadorErrores.reportarError(lineaActual, "Léxico",
+                if (indice >= codigo.length() || codigo.charAt(indice) == '\n') {
+                    manejadorErrores.reportarError("EL02", lineaActual, "Léxico",
                         "Cadena de texto sin cerrar.",
                         "Añade comillas dobles (\") al final del texto.");
+                    // Tokens sintéticos para que el parser pueda continuar sin cascada
+                    tokens.add(new Token(Token.Tipo.TEXTO_LITERAL, sb.toString(), lineaActual, colInicio));
+                    tokens.add(new Token(Token.Tipo.PUNTO_Y_COMA, ";", lineaActual, columnaActual));
                 } else {
-                    columnaActual++; indice++;   // saltar comilla de cierre
-                    tokens.add(new Token(Token.Tipo.TEXTO_LITERAL, sb.toString(),
-                                         lineaActual, colInicio));
+                    columnaActual++; indice++;  // saltar comilla de cierre
+                    tokens.add(new Token(Token.Tipo.TEXTO_LITERAL, sb.toString(), lineaActual, colInicio));
                 }
                 continue;
             }
 
-            // 5. Identificadores y Palabras Clave
-            if (Character.isLetter(actual) || actual == '_') {
-                int colInicio = columnaActual;   // columna del primer carácter
+            // 5. Identificador que inicia con dígito — EL03
+            if (Character.isDigit(actual)) {
                 StringBuilder sb = new StringBuilder();
                 while (indice < codigo.length() &&
                        (Character.isLetterOrDigit(codigo.charAt(indice)) || codigo.charAt(indice) == '_')) {
                     sb.append(codigo.charAt(indice));
                     columnaActual++;
                     indice++;
+                }
+                manejadorErrores.reportarError(
+                    "EL03", lineaActual, "Análisis Léxico",
+                    "El identificador '" + sb.toString() + "' no puede iniciar con un dígito.",
+                    "Los identificadores deben comenzar con una letra (a-z, A-Z) o guión bajo (_)."
+                );
+                continue;
+            }
+
+            // 6. Identificadores y Palabras Clave
+            if (Character.isLetter(actual) || actual == '_') {
+                int colInicio = columnaActual;
+                StringBuilder sb = new StringBuilder();
+                while (indice < codigo.length()) {
+                    char c = codigo.charAt(indice);
+                    if (Character.isLetterOrDigit(c) || c == '_') {
+                        sb.append(c);
+                        columnaActual++;
+                        indice++;
+                    } else if (indice + 1 < codigo.length()
+                            && (Character.isLetterOrDigit(codigo.charAt(indice + 1)) || codigo.charAt(indice + 1) == '_')
+                            && !Character.isWhitespace(c)
+                            && c != ';' && c != ':' && c != '{' && c != '}' && c != '"' && c != '\n') {
+                        // EL04: carácter inválido dentro de un identificador (ej: mi@nodo)
+                        manejadorErrores.reportarError(
+                            "EL04", lineaActual, "Análisis Léxico",
+                            "El carácter '" + c + "' no es válido dentro del identificador '" + sb.toString() + "...'.",
+                            "Los identificadores solo pueden contener letras, dígitos y guión bajo (_)."
+                        );
+                        columnaActual++;
+                        indice++;
+                    } else {
+                        break;
+                    }
                 }
                 String lexema = sb.toString();
                 if (lexema.equals("diagrama")) {
@@ -111,7 +147,7 @@ public class LexerBase {
                 continue;
             }
 
-            // 6. Carácter inválido — error léxico pedagógico
+            // 7. Captura pedagógica de caracteres inválidos — EL01
             manejadorErrores.reportarErrorLéxico(lineaActual, actual);
             columnaActual++;
             indice++;

@@ -1,9 +1,11 @@
 {
   "permissions": {
+    "additionalDirectories": [
+      "c:\\Users\\bobal\\.claude\\projects\\c--Users-bobal-Desktop-Diagrams-As-Code-main-Diagrams-As-Code-main\\memory"
+    ],
     "allow": [
-      "Read(//c/Program Files/Android/Android Studio/jbr/**)",
-      "Read(//c/Users/javi_/**)",
-      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\\\\lib\" | Where-Object {$_.Name -match \"javafx|fx\"} | Select-Object Name)"
+      "Bash(git init *)",
+      "Bash(git remote *)"
     ]
   }
 }

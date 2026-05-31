@@ -22,58 +22,61 @@ public class ParserBase {
         while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
             Token t = tokens.get(pos);
 
-            // Evaluamos si el token es un identificador genérico o la palabra reservada 'diagrama'
             if (t.getTipo() == Token.Tipo.IDENTIFICADOR || t.getTipo() == Token.Tipo.PR_DIAGRAMA) {
                 String lexema = t.getLexema();
 
-                // 1. INTERCEPTAR META-INSTRUCCIONES DEL NÚCLEO
+                // 1. META-INSTRUCCIONES
                 if (lexema.equals("autor") || lexema.equals("version") ||
                         lexema.equals("tema") || lexema.equals("exportar") || lexema.equals("importar")) {
 
-                    pos++; // Consumir la palabra clave
+                    pos++;
                     if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.TEXTO_LITERAL) {
                         String valor = tokens.get(pos).getLexema();
-                        System.out.println("⚙️ [NÚCLEO] Meta-Instrucción procesada: " + lexema + " -> " + valor);
-                        pos++; // Consumir el valor entre comillas
-
-                        // Consumir el punto y coma (;) obligatorio
+                        tablaSimbolos.registrar(lexema, valor);
+                        pos++;
                         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) {
                             pos++;
                         } else {
-                            manejadorErrores.reportarError(t.getLinea(), "Sintáctico Núcleo", "Falta ';' al final de la instrucción '" + lexema + "'.", "Añade un punto y coma.");
+                            manejadorErrores.reportarError("ES01", t.getLinea(), "Sintáctico Núcleo",
+                                "Falta ';' al final de la instrucción '" + lexema + "'.",
+                                "Añade un punto y coma al final.");
                         }
-                        continue; // Volver al inicio del bucle para leer la siguiente línea
+                        continue;
                     } else {
-                        manejadorErrores.reportarError(t.getLinea(), "Sintáctico Núcleo", "Se esperaba un texto entre comillas después de '" + lexema + "'.", "Usa comillas dobles para el valor.");
+                        manejadorErrores.reportarError("ES02", t.getLinea(), "Sintáctico Núcleo",
+                            "Se esperaba un texto entre comillas después de '" + lexema + "'.",
+                            "Usa comillas dobles para el valor, ej: " + lexema + " \"valor\";");
                         pos++;
                         continue;
                     }
                 }
-                // 2. PROCESAR LA CABECERA DEL DIAGRAMA
+                // 2. CABECERA DEL DIAGRAMA
                 else if (lexema.equals("diagrama")) {
-                    pos++; // Consumir 'diagrama'
+                    pos++;
 
                     if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR) {
                         String tipoDiagrama = tokens.get(pos).getLexema().toLowerCase();
+                        String tipoCapitalizado = tipoDiagrama.substring(0, 1).toUpperCase() + tipoDiagrama.substring(1);
                         pos++;
 
                         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) {
-                            pos++; // Consumir ';'
-
-                            // Bloquear la tabla de símbolos para el ecosistema específico
-                            tablaSimbolos.bloquearContexto(tipoDiagrama.substring(0, 1).toUpperCase() + tipoDiagrama.substring(1));
-
-                            // Recortar los tokens restantes y enviarlos al submódulo
+                            pos++;
+                            tablaSimbolos.registrar("diagrama", tipoCapitalizado);
+                            tablaSimbolos.registrar(tipoCapitalizado, "tipo_diagrama");
+                            tablaSimbolos.bloquearContexto(tipoCapitalizado);
                             List<Token> tokensRestantes = new ArrayList<>(tokens.subList(pos, tokens.size()));
                             delegarAlModulo(tipoDiagrama, tokensRestantes);
-
                             diagramaEncontrado = true;
-                            break; // Romper el bucle del núcleo, el submódulo toma el control total
+                            break;
                         } else {
-                            manejadorErrores.reportarError(t.getLinea(), "Sintáctico", "Falta ';' en la cabecera.", "Termina la declaración con punto y coma.");
+                            manejadorErrores.reportarError("ES03", t.getLinea(), "Sintáctico",
+                                "Falta ';' en la cabecera 'diagrama " + tipoDiagrama + "'.",
+                                "Termina la declaración con punto y coma.");
                         }
                     } else {
-                        manejadorErrores.reportarError(t.getLinea(), "Sintáctico", "Falta el tipo de diagrama.", "Especifica 'Flujo', 'BD', 'Redes', 'Conceptual' o 'UML'.");
+                        manejadorErrores.reportarError("ES04", t.getLinea(), "Sintáctico",
+                            "Falta el tipo de diagrama después de 'diagrama'.",
+                            "Especifica 'Flujo', 'BD', 'Redes', 'Conceptual' o 'UML'.");
                     }
                     break;
                 }
@@ -82,7 +85,9 @@ public class ParserBase {
         }
 
         if (!diagramaEncontrado && !manejadorErrores.tieneErrores()) {
-            manejadorErrores.reportarError(1, "Sintáctico", "No se encontró la cabecera principal.", "Asegúrate de incluir 'diagrama [Tipo];' en el archivo.");
+            manejadorErrores.reportarError("ES05", 1, "Sintáctico",
+                "No se encontró la cabecera principal 'diagrama <Tipo>;'.",
+                "Asegúrate de incluir 'diagrama Flujo;', 'diagrama BD;' o 'diagrama Redes;'.");
         }
     }
 
@@ -104,7 +109,9 @@ public class ParserBase {
                 com.diagramas.modulos.uml.UMLParser parserUML = new com.diagramas.modulos.uml.UMLParser(tokensRestantes, tablaSimbolos, manejadorErrores);
                 return parserUML.parsear();
             default:
-                manejadorErrores.reportarError(1, "Semántico", "Módulo '" + tipoDiagrama + "' no reconocido.", "Los módulos válidos son: Flujo, BD, Redes, Conceptual, UML.");
+                manejadorErrores.reportarError("ES05", 1, "Sintáctico",
+                    "Módulo '" + tipoDiagrama + "' no reconocido.",
+                    "Los módulos válidos son: Flujo, BD, Redes, Conceptual, UML.");
                 return null;
         }
     }

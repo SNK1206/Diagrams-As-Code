@@ -1,0 +1,8 @@
+autor "Test EL04";
+version "1.0";
+diagrama Flujo;
+// EL04: caracter $ invalido DENTRO del identificador mi$nodo
+// Esperado: 1 error EL04 sin cascada.
+// El lexer omite el '$' y fusiona 'mi'+'nodo' -> token 'minodo'.
+// El parser registra 'minodo | inicio' correctamente.
+inicio mi$nodo;

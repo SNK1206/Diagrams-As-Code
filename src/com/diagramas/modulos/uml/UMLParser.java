@@ -55,6 +55,7 @@ public class UMLParser {
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
+        // Pre-registrar antes del bloque para evitar cascada en relaciones
         tabla.registrar(nombre, "clase");
 
         if (!validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "ES45", "Falta '{' para abrir el cuerpo de la clase '" + nombre + "'.")) {
@@ -108,7 +109,6 @@ public class UMLParser {
     }
 
     private void procesarComponenteLineal(RaizUMLAST raiz, String rol) {
-        int lineaOriginal = tokens.get(pos).getLinea();
         pos++;
 
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES44", "Falta el nombre del " + rol + ".")) {
@@ -122,10 +122,7 @@ public class UMLParser {
         }
         pos++;
 
-        if (!tabla.registrar(nombre, rol)) {
-            errores.reportarError("", lineaOriginal, "Semántico UML",
-                "El identificador '" + nombre + "' ya existe.", "Usa un nombre diferente.");
-        }
+        tabla.registrar(nombre, rol);
         raiz.agregarElemento(new NodoClase(nombre + " [" + rol.toUpperCase() + "]", new ArrayList<>()));
     }
 
@@ -166,7 +163,7 @@ public class UMLParser {
 
     private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
-            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
+            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : (pos > 0 ? tokens.get(pos - 1).getLinea() : 1);
             errores.reportarError(codigo, l, "Sintáctico UML", mensajeError, "Revisa la guía del módulo UML.");
             return false;
         }

@@ -7,9 +7,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Tab;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -142,7 +144,7 @@ public class MainFX extends Application {
         SplitPane splitCentro = new SplitPane(panelEditor, panelAnalisis);
         splitCentro.setDividerPositions(0.45f);
 
-        // --- 4. CONSOLA PEDAGÓGICA (ABAJO) ---
+        // --- 4. CONSOLA PEDAGÓGICA (ABAJO, ARRASTRABLE) ---
         VBox panelConsola = new VBox(5);
         panelConsola.setPadding(new Insets(10));
         Label lblConsola = new Label("Consola:");
@@ -150,13 +152,16 @@ public class MainFX extends Application {
         txtConsola = new TextArea();
         txtConsola.setEditable(false);
         txtConsola.setFont(Font.font("Monospaced", 12));
-        txtConsola.setPrefHeight(120);
+        VBox.setVgrow(txtConsola, Priority.ALWAYS);
         panelConsola.getChildren().addAll(lblConsola, txtConsola);
+
+        SplitPane splitPrincipal = new SplitPane(splitCentro, panelConsola);
+        splitPrincipal.setOrientation(Orientation.VERTICAL);
+        splitPrincipal.setDividerPositions(0.72);
 
         BorderPane root = new BorderPane();
         root.setTop(toolbar);
-        root.setCenter(splitCentro);
-        root.setBottom(panelConsola);
+        root.setCenter(splitPrincipal);
 
         Scene scene = new Scene(root, 1100, 700);
         primaryStage.setScene(scene);
@@ -184,12 +189,11 @@ public class MainFX extends Application {
     // --- NUEVO MÉTODO CRÍTICO DE GUARDADO (PERSISTENCIA) ---
     private void guardarArchivoActual(Stage stage) {
         Tab pestañaActiva = panelPestanas.getSelectionModel().getSelectedItem();
-        if (pestañaActiva == null) {
-            txtConsola.setText("⚠️ ERROR: No hay ninguna pestaña abierta para guardar.");
+        TextArea txtEditorActual = getEditorDePestana(pestañaActiva);
+        if (txtEditorActual == null) {
+            txtConsola.setText("ERROR: Selecciona un archivo .dac para guardar.");
             return;
         }
-
-        TextArea txtEditorActual = (TextArea) pestañaActiva.getContent();
         String contenido = txtEditorActual.getText();
 
         // Recuperar la vinculación física con el archivo almacenado en el userData de la Tab
@@ -208,7 +212,7 @@ public class MainFX extends Application {
                 pestañaActiva.setUserData(archivoAsociado); // Vincular permanentemente el archivo a la pestaña
                 pestañaActiva.setText(archivoAsociado.getName()); // Renombrar título de pestaña
             } else {
-                txtConsola.setText("⚠️ Operación de guardado cancelada por el usuario.");
+                txtConsola.setText("Guardado cancelado.");
                 return;
             }
         }
@@ -218,7 +222,7 @@ public class MainFX extends Application {
             Files.writeString(archivoAsociado.toPath(), contenido, StandardCharsets.UTF_8);
             txtConsola.setText("💾 Archivo '" + archivoAsociado.getName() + "' guardado con éxito en el almacenamiento local.");
         } catch (IOException ex) {
-            txtConsola.setText("❌ ERROR CRÍTICO AL GUARDAR: No se pudo escribir sobre el archivo.\nDetalle: " + ex.getMessage());
+            txtConsola.setText("ERROR AL GUARDAR: No se pudo escribir el archivo.\nDetalle: " + ex.getMessage());
         }
     }
 
@@ -239,7 +243,6 @@ public class MainFX extends Application {
             "-fx-text-fill: #95a5a6;" +
             "-fx-padding: 2 4 2 4;" +
             "-fx-border-color: #bdc3c7; -fx-border-width: 0 1 0 0;");
-        // Evitar que el usuario desplace el gutter de forma independiente
         lineNums.addEventFilter(javafx.scene.input.ScrollEvent.SCROLL, e -> e.consume());
 
         // ── Área de código principal ──────────────────────────────────────────
@@ -248,22 +251,17 @@ public class MainFX extends Application {
         areaTexto.setWrapText(false);
         HBox.setHgrow(areaTexto, Priority.ALWAYS);
 
-        // Inicializar y mantener actualizados los números de línea
         lineNums.setText(generarNumerosLinea(contenido));
         areaTexto.textProperty().addListener((obs, viejo, nuevo) ->
             lineNums.setText(generarNumerosLinea(nuevo)));
-
-        // Sincronizar scroll vertical entre el gutter y el editor
         areaTexto.scrollTopProperty().addListener((obs, viejo, nuevo) ->
             lineNums.setScrollTop(nuevo.doubleValue()));
 
         HBox panel = new HBox(lineNums, areaTexto);
         nuevaPestana.setContent(panel);
 
-        // Registrar el TextArea de código para acceso posterior
         editores.put(nuevaPestana, areaTexto);
         nuevaPestana.setOnClosed(e -> editores.remove(nuevaPestana));
-
         panelPestanas.getTabs().add(nuevaPestana);
         panelPestanas.getSelectionModel().select(nuevaPestana);
     }
@@ -278,18 +276,22 @@ public class MainFX extends Application {
         return sb.toString();
     }
 
+    private TextArea getEditorDePestana(Tab tab) {
+        if (tab == null) return null;
+        return editores.get(tab);
+    }
+
     private void ejecutarCompilador() {
         txtTokens.clear();
         txtSimbolos.clear();
         txtConsola.clear();
 
         Tab pestañaActiva = panelPestanas.getSelectionModel().getSelectedItem();
-        if (pestañaActiva == null) {
-            txtConsola.setText("⚠️ ERROR: No hay ningún archivo abierto para compilar.");
+        TextArea txtEditorActual = getEditorDePestana(pestañaActiva);
+        if (txtEditorActual == null) {
+            txtConsola.setText("ERROR: Selecciona un archivo .dac para compilar.");
             return;
         }
-
-        TextArea txtEditorActual = (TextArea) pestañaActiva.getContent();
         String codigoFuente = txtEditorActual.getText();
 
         ManejadorErrores manejadorErrores = new ManejadorErrores();
@@ -305,17 +307,15 @@ public class MainFX extends Application {
         }
         txtTokens.setText(sbTokens.toString());
 
-        if (manejadorErrores.tieneErrores()) {
-            txtConsola.setText("🛑 PROCESO DETENIDO POR ERRORES LÉXICOS:\n\n" + obtenerErroresString(manejadorErrores));
-            return;
-        }
+        boolean hayErroresLexicos = manejadorErrores.tieneErrores();
 
-        // 2. FASE SINTÁCTICA Y SEMÁNTICA
+        // 2. FASE SINTÁCTICA — corre siempre para registrar los símbolos válidos
         ParserBase parserBase = new ParserBase(tokens, tablaSimbolos, manejadorErrores);
         parserBase.analizarCabecera();
 
+        // Tabla de símbolos: muestra lo que sí se registró (si diagrama es inválido queda vacía)
         StringBuilder sbSimbolos = new StringBuilder();
-        sbSimbolos.append("🔒 Contexto Bloqueado: ").append(tablaSimbolos.getContextoActivo()).append("\n\n");
+        sbSimbolos.append("Contexto Bloqueado: ").append(tablaSimbolos.getContextoActivo()).append("\n\n");
         sbSimbolos.append(String.format("%-25s | %-15s\n", "IDENTIFICADOR ENCONTRADO", "TIPO/ROL ASIGNADO"));
         sbSimbolos.append("----------------------------------------------------\n");
 
@@ -325,7 +325,8 @@ public class MainFX extends Application {
         txtSimbolos.setText(sbSimbolos.toString());
 
         if (manejadorErrores.tieneErrores()) {
-            txtConsola.setText("COMPILACIÓN FALLIDA:\n\n" + obtenerErroresString(manejadorErrores));
+            String prefijo = hayErroresLexicos ? "ERRORES LEXICOS + SINTACTICOS:\n\n" : "COMPILACION FALLIDA:\n\n";
+            txtConsola.setText(prefijo + obtenerErroresString(manejadorErrores));
         } else {
             txtConsola.setText("COMPILACIÓN EXITOSA de [" + pestañaActiva.getText() + "]");
         }
@@ -546,11 +547,15 @@ public class MainFX extends Application {
     private void mostrarArbolDerivacion() {
         Tab pestañaActiva = panelPestanas.getSelectionModel().getSelectedItem();
         if (pestañaActiva == null) {
-            txtConsola.setText("⚠️ No hay archivo abierto para generar el árbol.");
+            txtConsola.setText("No hay archivo abierto para generar el arbol.");
             return;
         }
 
-        TextArea editor = (TextArea) pestañaActiva.getContent();
+        TextArea editor = getEditorDePestana(pestañaActiva);
+        if (editor == null) {
+            txtConsola.setText("ERROR: Selecciona un archivo .dac para generar el arbol.");
+            return;
+        }
         String codigo = editor.getText();
 
         ManejadorErrores errores = new ManejadorErrores();
@@ -558,7 +563,7 @@ public class MainFX extends Application {
         List<Token> tokens = lexer.tokenizar();
 
         if (errores.tieneErrores()) {
-            txtConsola.setText("⚠️ El archivo tiene errores léxicos. Corrígelos antes de generar el árbol.");
+            txtConsola.setText("El archivo tiene errores lexicos. Corrigelos antes de generar el arbol.");
             return;
         }
 
@@ -1195,9 +1200,13 @@ public class MainFX extends Application {
         ObservableList<ErrorLexico> todos = FXCollections.observableArrayList(
             // ── LÉXICOS — LexerBase.java (2 llamadas reales) ─────────────────
             new ErrorLexico("EL01", "Léxico",
-                "El carácter encontrado no pertenece al alfabeto del lenguaje DAC"),
+                "Carácter inválido — el símbolo no pertenece al alfabeto del lenguaje DAC"),
             new ErrorLexico("EL02", "Léxico",
-                "Cadena de texto sin cerrar — falta comilla doble de cierre"),
+                "Cadena de texto sin cerrar — falta comilla doble de cierre (\")"),
+            new ErrorLexico("EL03", "Léxico",
+                "Identificador inválido — no puede iniciar con un dígito (ej: '2nodo' debe ser 'nodo2')"),
+            new ErrorLexico("EL04", "Léxico",
+                "Carácter inválido dentro de un identificador — solo se permiten letras, dígitos y guión bajo (ej: 'mi@nodo' es inválido)"),
 
             // ── SINTÁCTICOS — ParserBase.java ────────────────────────────────
             new ErrorLexico("ES01", "Sintáctico",
@@ -1288,6 +1297,8 @@ public class MainFX extends Application {
                 "[Sintáctico Conceptual] Falta el identificador destino en la instrucción de relación"),
             new ErrorLexico("ES40", "Sintáctico",
                 "[Sintáctico Conceptual] Falta ';' al finalizar la instrucción de relación"),
+            new ErrorLexico("ES41", "Sintáctico",
+                "[Sintáctico Conceptual] Instrucción inválida — identificador sin verbo de relación reconocido"),
             new ErrorLexico("ES42", "Sintáctico",
                 "[Sintáctico Conceptual] Verbo inválido — se esperaba 'agrupa', 'asocia' o 'depende'"),
 

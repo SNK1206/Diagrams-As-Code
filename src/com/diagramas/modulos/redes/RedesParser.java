@@ -33,13 +33,14 @@ public class RedesParser {
                         lexema.equals("cluster") || lexema.equals("tunel") ||
                         lexema.equals("zona") || lexema.equals("puerto") ||
                         lexema.equals("politica")) {
-
-                    procesarComponenteRed(raiz, lexema); // <-- Renombra tu método a procesarComponenteRed y pásale el lexema
+                    procesarComponenteRed(raiz, lexema);
                 } else {
                     procesarEnlace(raiz);
                 }
             } else {
-                errores.reportarError(tokenActual.getLinea(), "Sintáctico Redes", "Token inesperado '" + tokenActual.getLexema() + "'.", "Usa la palabra 'dispositivo' o define un enlace.");
+                errores.reportarError("ES27", tokenActual.getLinea(), "Sintáctico Redes",
+                    "Token inesperado '" + tokenActual.getLexema() + "'.",
+                    "Usa una palabra clave de dispositivo o define un enlace con 'enlaza'.");
                 pos++;
             }
         }
@@ -47,39 +48,43 @@ public class RedesParser {
     }
 
     private void procesarComponenteRed(RaizRedesAST raiz, String rol) {
-        int lineaOriginal = tokens.get(pos).getLinea();
-        pos++; // Consumir 'dispositivo'
+        pos++;
 
-        if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el nombre del dispositivo.")) {
-            String nombre = tokens.get(pos).getLexema();
-            pos++;
-
-            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el tipo de dispositivo (ej. Router, Switch).")) {
-                String tipo = tokens.get(pos).getLexema();
-                pos++;
-
-                String config = "";
-                // Bloque opcional de propiedades { IP: "192..."; }
-                if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.LLAVE_IZQ) {
-                    pos++; // Consumir '{'
-                    StringBuilder sb = new StringBuilder();
-                    while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
-                        sb.append(tokens.get(pos).getLexema()).append(" ");
-                        pos++;
-                    }
-                    config = sb.toString().trim();
-                    if (validarSiguienteTipo(Token.Tipo.LLAVE_DER, "Falta cerrar llaves '}'.")) pos++;
-                }
-
-                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';' al final del dispositivo.")) {
-                    pos++;
-                    if (!tabla.registrar(nombre, "dispositivo_" + tipo)) {
-                        errores.reportarError(lineaOriginal, "Semántico Redes", "El dispositivo '" + nombre + "' ya existe.", "Asigna un nombre único.");
-                    }
-                    raiz.agregarElemento(new NodoDispositivo(nombre, tipo, config));
-                }
-            }
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES28", "Falta el nombre del dispositivo.")) {
+            recuperarPanico(); return;
         }
+        String nombre = tokens.get(pos).getLexema();
+        pos++;
+
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES29", "Falta el tipo del dispositivo (ej. Router, Switch).")) {
+            recuperarPanico(); return;
+        }
+        String tipo = tokens.get(pos).getLexema();
+        pos++;
+
+        // Pre-registrar antes del bloque para evitar cascada en instrucciones enlaza
+        tabla.registrar(nombre, "dispositivo_" + tipo);
+
+        String config = "";
+        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.LLAVE_IZQ) {
+            pos++;
+            StringBuilder sb = new StringBuilder();
+            while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+                sb.append(tokens.get(pos).getLexema()).append(" ");
+                pos++;
+            }
+            config = sb.toString().trim();
+            if (!validarSiguienteTipo(Token.Tipo.LLAVE_DER, "ES30", "Falta '}' para cerrar el bloque de propiedades.")) {
+                return;
+            }
+            pos++;
+        }
+
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES31", "Falta ';' al final de la declaración del dispositivo.")) {
+            recuperarPanico(); return;
+        }
+        pos++;
+        raiz.agregarElemento(new NodoDispositivo(nombre, tipo, config));
     }
 
     private void procesarEnlace(RaizRedesAST raiz) {
@@ -87,38 +92,38 @@ public class RedesParser {
         String idOrigen = tOrigen.getLexema();
         pos++;
 
-        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR && tokens.get(pos).getLexema().equals("enlaza")) {
-            pos++; // Consumir 'enlaza'
-
-            if (validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "Falta el dispositivo destino.")) {
-                String idDestino = tokens.get(pos).getLexema();
-                pos++;
-
-                if (validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "Falta ';'.")) {
-                    pos++;
-
-                    if (!tabla.existe(idOrigen)) {
-                        errores.reportarError(tOrigen.getLinea(), "Semántico Redes", "El dispositivo '" + idOrigen + "' no existe.", "Decláralo antes de enlazarlo.");
-                    } else if (!tabla.existe(idDestino)) {
-                        errores.reportarError(tOrigen.getLinea(), "Semántico Redes", "El dispositivo '" + idDestino + "' no existe.", "Decláralo antes de enlazarlo.");
-                    } else {
-                        raiz.agregarElemento(new NodoEnlace(idOrigen, idDestino));
-                    }
-                }
-            }
-        } else {
-            errores.reportarError(tOrigen.getLinea(), "Sintáctico Redes", "Verbo incorrecto en '" + idOrigen + "'.", "Para redes usa el verbo exclusivo 'enlaza'.");
-            while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
-            if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
+        if (pos >= tokens.size() || tokens.get(pos).getTipo() != Token.Tipo.IDENTIFICADOR || !tokens.get(pos).getLexema().equals("enlaza")) {
+            errores.reportarError("ES34", tOrigen.getLinea(), "Sintáctico Redes",
+                "Verbo incorrecto en '" + idOrigen + "'.",
+                "Para redes usa el verbo exclusivo 'enlaza'.");
+            recuperarPanico(); return;
         }
+        pos++;
+
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES32", "Falta el identificador destino en instrucción 'enlaza'.")) {
+            recuperarPanico(); return;
+        }
+        String idDestino = tokens.get(pos).getLexema();
+        pos++;
+
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES33", "Falta ';' al finalizar la instrucción 'enlaza'.")) {
+            recuperarPanico(); return;
+        }
+        pos++;
+        raiz.agregarElemento(new NodoEnlace(idOrigen, idDestino));
     }
 
-    private boolean validarSiguienteTipo(Token.Tipo esperado, String mensajeError) {
+    private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
-            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
-            errores.reportarError(l, "Sintáctico Redes", mensajeError, "Revisa la guía del módulo Redes.");
+            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : (pos > 0 ? tokens.get(pos - 1).getLinea() : 1);
+            errores.reportarError(codigo, l, "Sintáctico Redes", mensajeError, "Revisa la guía del módulo Redes.");
             return false;
         }
         return true;
+    }
+
+    private void recuperarPanico() {
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
+        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
     }
 }
