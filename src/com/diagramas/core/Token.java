@@ -19,22 +19,31 @@ public class Token {
         EOF             // End of File (Fin de archivo)
     }
 
-    private final Tipo tipo;
+    private final Tipo   tipo;
     private final String lexema;
-    private final int linea;
+    private final int    linea;
+    private final int    columna;   // columna donde inicia el token (base 1)
 
-    public Token(Tipo tipo, String lexema, int linea) {
-        this.tipo = tipo;
-        this.lexema = lexema;
-        this.linea = linea;
+    public Token(Tipo tipo, String lexema, int linea, int columna) {
+        this.tipo    = tipo;
+        this.lexema  = lexema;
+        this.linea   = linea;
+        this.columna = columna;
     }
 
-    public Tipo getTipo() { return tipo; }
-    public String getLexema() { return lexema; }
-    public int getLinea() { return linea; }
+    // Constructor de compatibilidad sin columna (columna = 0 indica "no registrada")
+    public Token(Tipo tipo, String lexema, int linea) {
+        this(tipo, lexema, linea, 0);
+    }
+
+    public Tipo   getTipo()    { return tipo;    }
+    public String getLexema()  { return lexema;  }
+    public int    getLinea()   { return linea;   }
+    public int    getColumna() { return columna; }
 
     @Override
     public String toString() {
-        return String.format("Token [%s | '%s' | Línea: %d]", tipo, lexema, linea);
+        return String.format("Token [%s | '%s' | Línea: %d | Col: %d]",
+                             tipo, lexema, linea, columna);
     }
 }

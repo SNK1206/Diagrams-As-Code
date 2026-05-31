@@ -44,6 +44,9 @@ public class MainFX extends Application {
     // Contador para nombrar los archivos nuevos por defecto
     private int contadorNuevos = 1;
 
+    // Mapa de tab -> TextArea de codigo (separa el editor del area de numeros de linea)
+    private final Map<Tab, TextArea> editores = new HashMap<>();
+
     public static void main(String[] args) {
         launch(args);
     }
@@ -99,7 +102,11 @@ public class MainFX extends Application {
         btnManual.setStyle("-fx-background-color: #1a5276; -fx-text-fill: white; -fx-font-weight: bold;");
         btnManual.setOnAction(e -> mostrarManual(primaryStage, "manual_diagrams_as_code.md", "Manual de Usuario — Diagrams As Code v2.0"));
 
-        toolbar.getChildren().addAll(lblTitulo, btnNuevo, btnAbrir, btnGuardar, btnCompilar, btnErroresLexicos, btnArbol, espaciador, btnSimbologia, btnManual);
+        Button btnGramatica = new Button("Gramática DAC");
+        btnGramatica.setStyle("-fx-background-color: #0e6655; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnGramatica.setOnAction(e -> mostrarManual(primaryStage, "gramatica_dac.md", "Gramática del Lenguaje — Diagrams As Code"));
+
+        toolbar.getChildren().addAll(lblTitulo, btnNuevo, btnAbrir, btnGuardar, btnCompilar, btnErroresLexicos, btnArbol, espaciador, btnSimbologia, btnManual, btnGramatica);
 
         // --- 2. EDITOR DE CÓDIGO CON PESTAÑAS (IZQUIERDA) ---
         VBox panelEditor = new VBox(5);
@@ -217,15 +224,58 @@ public class MainFX extends Application {
 
     private void crearPestana(String titulo, String contenido, File archivo) {
         Tab nuevaPestana = new Tab(titulo);
-        // Almacenar el puntero del archivo físico en la propiedad de la pestaña
         nuevaPestana.setUserData(archivo);
 
+        // ── Gutter de números de línea (izquierda, solo lectura) ─────────────
+        TextArea lineNums = new TextArea();
+        lineNums.setEditable(false);
+        lineNums.setFocusTraversable(false);
+        lineNums.setPrefWidth(55);
+        lineNums.setMinWidth(55);
+        lineNums.setMaxWidth(55);
+        lineNums.setFont(Font.font("Monospaced", 14));
+        lineNums.setStyle(
+            "-fx-control-inner-background: #ecf0f1;" +
+            "-fx-text-fill: #95a5a6;" +
+            "-fx-padding: 2 4 2 4;" +
+            "-fx-border-color: #bdc3c7; -fx-border-width: 0 1 0 0;");
+        // Evitar que el usuario desplace el gutter de forma independiente
+        lineNums.addEventFilter(javafx.scene.input.ScrollEvent.SCROLL, e -> e.consume());
+
+        // ── Área de código principal ──────────────────────────────────────────
         TextArea areaTexto = new TextArea(contenido);
         areaTexto.setFont(Font.font("Monospaced", 14));
+        areaTexto.setWrapText(false);
+        HBox.setHgrow(areaTexto, Priority.ALWAYS);
 
-        nuevaPestana.setContent(areaTexto);
+        // Inicializar y mantener actualizados los números de línea
+        lineNums.setText(generarNumerosLinea(contenido));
+        areaTexto.textProperty().addListener((obs, viejo, nuevo) ->
+            lineNums.setText(generarNumerosLinea(nuevo)));
+
+        // Sincronizar scroll vertical entre el gutter y el editor
+        areaTexto.scrollTopProperty().addListener((obs, viejo, nuevo) ->
+            lineNums.setScrollTop(nuevo.doubleValue()));
+
+        HBox panel = new HBox(lineNums, areaTexto);
+        nuevaPestana.setContent(panel);
+
+        // Registrar el TextArea de código para acceso posterior
+        editores.put(nuevaPestana, areaTexto);
+        nuevaPestana.setOnClosed(e -> editores.remove(nuevaPestana));
+
         panelPestanas.getTabs().add(nuevaPestana);
         panelPestanas.getSelectionModel().select(nuevaPestana);
+    }
+
+    private String generarNumerosLinea(String texto) {
+        int total = texto.isEmpty() ? 1 : texto.split("\n", -1).length;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i <= total; i++) {
+            if (i > 1) sb.append('\n');
+            sb.append(i);
+        }
+        return sb.toString();
     }
 
     private void ejecutarCompilador() {
@@ -469,16 +519,27 @@ public class MainFX extends Application {
 
     // ─────────────────────────────────────────────────────────────────────────
     // ÁRBOL DE DERIVACIÓN
-    // ── Tamaños naturales (antes de escalar) ─────────────────────────────────
-    private static final double RX_N  = 52;  // radio X óvalo no-terminal
-    private static final double RY_N  = 14;  // radio Y óvalo no-terminal
-    private static final double TW_N  = 50;  // ancho rectángulo terminal
-    private static final double TH_N  = 17;  // alto  rectángulo terminal
-    private static final double HGAP  = 6;   // espacio horizontal mínimo entre hermanos
-    private static final double VGAP  = 58;  // espacio vertical entre niveles
-    private static final double PAD   = 36;  // margen exterior del canvas
+    // ── Constantes de altura y espaciado (el ancho se calcula dinamicamente) ──
+    private static final double RY_N    = 18;   // radio Y fijo del ovalo (altura)
+    private static final double TH_N    = 22;   // alto fijo del rectangulo terminal
+    private static final double FONT_PT = 10.5; // fuente base a escala 1:1
+    private static final double HGAP   = 14;    // espacio horizontal entre hermanos
+    private static final double VGAP   = 85;    // espacio vertical entre niveles
+    private static final double PAD    = 44;    // margen exterior del canvas
 
-    private double nw(TreeItem<String> n) { return isTerminal(n.getValue()) ? TW_N : RX_N * 2; }
+    // Ancho dinamico: mide el texto real y agrega padding adecuado
+    private double nw(TreeItem<String> n) {
+        String lbl  = n.getValue();
+        boolean term = isTerminal(lbl);
+        String txt  = term ? extractLexema(lbl) : shortLabel(lbl);
+        javafx.scene.text.Text m = new javafx.scene.text.Text(txt);
+        m.setFont(term ? Font.font("Monospaced", FontWeight.NORMAL, FONT_PT)
+                       : Font.font("System",     FontWeight.BOLD,   FONT_PT));
+        double tw = m.getLayoutBounds().getWidth();
+        // Terminal: padding de 20px c/lado; no-terminal: se expresa como diametro del ovalo
+        return term ? Math.max(75,  tw + 28)
+                    : Math.max(110, tw + 48);
+    }
     private double nh(TreeItem<String> n) { return isTerminal(n.getValue()) ? TH_N : RY_N * 2; }
     private boolean isTerminal(String label) { return label.contains("→"); }
 
@@ -510,26 +571,54 @@ public class MainFX extends Application {
             }
         }
 
-        // Construir árbol lógico
+        // Construir árbol lógico alineado con la gramática formal EBNF
         final TreeItem<String> raiz = new TreeItem<>("programa_" + modulo);
         raiz.setExpanded(true);
+
+        // Agrupar tokens por instruccion:
+        //   - se divide en ';' cuando prof == 0  (instrucciones lineales)
+        //   - se divide en '}' cuando prof pasa a 0  (bloques BD/UML sin ';' final)
         List<List<Token>> instrucciones = new ArrayList<>();
         List<Token> actual = new ArrayList<>();
         int prof = 0;
         for (Token t : tokens) {
             if (t.getTipo() == Token.Tipo.EOF) break;
             if (t.getTipo() == Token.Tipo.LLAVE_IZQ) prof++;
-            if (t.getTipo() == Token.Tipo.LLAVE_DER) prof--;
             actual.add(t);
-            if (t.getTipo() == Token.Tipo.PUNTO_Y_COMA && prof == 0) {
-                instrucciones.add(new ArrayList<>(actual));
-                actual.clear();
+            if (t.getTipo() == Token.Tipo.LLAVE_DER) {
+                prof--;
+                if (prof == 0) {
+                    instrucciones.add(new ArrayList<>(actual));
+                    actual.clear();
+                }
+            } else if (t.getTipo() == Token.Tipo.PUNTO_Y_COMA && prof == 0) {
+                if (!actual.isEmpty()) {
+                    instrucciones.add(new ArrayList<>(actual));
+                    actual.clear();
+                }
             }
         }
+        if (!actual.isEmpty()) instrucciones.add(actual);
+
+        // Construir árbol: meta-instrucciones y cabecera van directo a raiz,
+        // las instrucciones del módulo van dentro de cuerpo_<modulo>
+        TreeItem<String> cuerpoNodo = new TreeItem<>("cuerpo_" + modulo);
+        cuerpoNodo.setExpanded(true);
+
         for (List<Token> grupo : instrucciones) {
+            if (grupo.isEmpty()) continue;
+            Token primero = grupo.get(0);
+            String lexPrimero = primero.getLexema();
+            boolean esMeta = lexPrimero.equals("autor") || lexPrimero.equals("version") ||
+                             lexPrimero.equals("tema") || lexPrimero.equals("exportar") ||
+                             lexPrimero.equals("importar");
+            boolean esCabecera = primero.getTipo() == Token.Tipo.PR_DIAGRAMA;
             TreeItem<String> n = construirNodoRegla(grupo, modulo);
-            if (n != null) raiz.getChildren().add(n);
+            if (n == null) continue;
+            if (esMeta || esCabecera) raiz.getChildren().add(n);
+            else                      cuerpoNodo.getChildren().add(n);
         }
+        raiz.getChildren().add(cuerpoNodo);
 
         // ── Layout natural (solo una vez) ──────────────────────────────────
         final Map<TreeItem<String>, double[]> natPos = new HashMap<>();
@@ -749,51 +838,91 @@ public class MainFX extends Application {
         return m;
     }
 
-    // ── Líneas rectas padre → hijo (con tamaños escalados por s) ─────────────
+    // ── Color de relleno segun tipo de nodo (no-terminal) ────────────────────
+    private Color getNodeColor(String lbl) {
+        if (lbl.startsWith("programa_"))           return Color.web("#1a252f");
+        if (lbl.startsWith("cuerpo_"))             return Color.web("#2c3e50");
+        if (lbl.equals("cabecera"))                return Color.web("#d35400");
+        if (lbl.equals("meta_instruccion"))        return Color.web("#7d3c98");
+        if (lbl.equals("decl_nodo_simple")
+         || lbl.equals("decl_nodo_texto"))         return Color.web("#1a6ea8");
+        if (lbl.startsWith("conexion_")
+         || lbl.startsWith("relacion_")
+         || lbl.startsWith("enlace_"))             return Color.web("#b03a2e");
+        if (lbl.startsWith("bloque_")
+         || lbl.startsWith("componente_"))         return Color.web("#117a65");
+        if (lbl.equals("atributo")
+         || lbl.startsWith("propiedad_")
+         || lbl.equals("miembro_clase"))           return Color.web("#1e8449");
+        if (lbl.startsWith("decl_"))               return Color.web("#1a6ea8");
+        return Color.web("#566573");
+    }
+
+    // ── Conexiones curvas padre → hijo ────────────────────────────────────────
     private void paintEdges(TreeItem<String> n, Map<TreeItem<String>, double[]> pos,
                             Pane c, double s) {
         double[] pp = pos.get(n);
         double   px = pp[0], pyBot = pp[1] + nh(n) * s / 2.0;
         for (TreeItem<String> h : n.getChildren()) {
-            double[] ph = pos.get(h);
-            Line l = new Line(px, pyBot, ph[0], ph[1] - nh(h) * s / 2.0);
-            l.setStroke(Color.web("#333333"));
-            l.setStrokeWidth(Math.max(0.5, s));
-            c.getChildren().add(l);
+            double[] ph   = pos.get(h);
+            double   phTop = ph[1] - nh(h) * s / 2.0;
+            double   midY  = (pyBot + phTop) / 2.0;
+            CubicCurve curve = new CubicCurve(px, pyBot, px, midY, ph[0], midY, ph[0], phTop);
+            curve.setStroke(Color.web("#95a5a6"));
+            curve.setFill(Color.TRANSPARENT);
+            curve.setStrokeWidth(Math.max(0.8, 1.2 * s));
+            c.getChildren().add(curve);
             paintEdges(h, pos, c, s);
         }
     }
 
-    // ── Nodos: óvalo blanco (no-terminal) | rectángulo blanco (terminal) ──────
+    // ── Nodos: ovalo coloreado (no-terminal) | rectangulo redondeado (terminal)
     private void paintNodes(TreeItem<String> n, Map<TreeItem<String>, double[]> pos,
                             Pane c, double s) {
-        double[] p   = pos.get(n);
-        String   lbl = n.getValue();
+        double[] p    = pos.get(n);
+        String   lbl  = n.getValue();
         boolean  term = isTerminal(lbl);
-        double   fs  = Math.max(7.5, 10.0 * s);  // fuente mínima legible
+        double   fs   = Math.max(8.0, FONT_PT * s);
+        double   nodW = nw(n) * s;  // ancho dinamico escalado
+        double   nodH = nh(n) * s;  // alto escalado
 
         if (term) {
-            double tw = TW_N * s, th = TH_N * s;
+            double tw = nodW, th = nodH;
             Rectangle r = new Rectangle(p[0] - tw / 2.0, p[1] - th / 2.0, tw, th);
-            r.setFill(Color.WHITE);
-            r.setStroke(Color.web("#333333"));
-            r.setStrokeWidth(Math.max(0.5, s));
+            r.setFill(Color.web("#fdfefe"));
+            r.setStroke(Color.web("#aab7b8"));
+            r.setStrokeWidth(Math.max(0.5, 0.8 * s));
+            r.setArcWidth(8 * s);
+            r.setArcHeight(8 * s);
             c.getChildren().add(r);
-            c.getChildren().add(mkText(extractLexema(lbl),
-                p[0] - tw / 2.0, p[1] + fs * 0.4, tw,
-                Font.font("Monospaced", FontWeight.NORMAL, fs), Color.web("#111111")));
+            // Texto medido y centrado exactamente dentro del rectangulo
+            javafx.scene.text.Text txt = new javafx.scene.text.Text(extractLexema(lbl));
+            txt.setFont(Font.font("Monospaced", FontWeight.NORMAL, fs));
+            txt.setFill(Color.web("#1a252f"));
+            txt.setWrappingWidth(0);
+            double tW = txt.getLayoutBounds().getWidth();
+            double tH = txt.getLayoutBounds().getHeight();
+            txt.setX(p[0] - tW / 2.0);
+            txt.setY(p[1] + tH * 0.35);
+            c.getChildren().add(txt);
         } else {
-            double rx = RX_N * s, ry = RY_N * s;
-            boolean root = lbl.startsWith("programa_");
+            double rx = nodW / 2.0, ry = nodH / 2.0;
+            Color  bg = getNodeColor(lbl);
             Ellipse oval = new Ellipse(p[0], p[1], rx, ry);
-            oval.setFill(root ? Color.web("#1a252f") : Color.WHITE);
-            oval.setStroke(root ? Color.BLACK : Color.web("#222222"));
-            oval.setStrokeWidth(Math.max(0.6, 1.3 * s));
+            oval.setFill(bg);
+            oval.setStroke(bg.darker());
+            oval.setStrokeWidth(Math.max(0.7, 1.2 * s));
             c.getChildren().add(oval);
-            c.getChildren().add(mkText(shortLabel(lbl),
-                p[0] - rx, p[1] + fs * 0.4, rx * 2,
-                Font.font("System", FontWeight.BOLD, fs),
-                root ? Color.WHITE : Color.web("#111111")));
+            // Texto medido y centrado dentro del ovalo
+            javafx.scene.text.Text txt = new javafx.scene.text.Text(shortLabel(lbl));
+            txt.setFont(Font.font("System", FontWeight.BOLD, fs));
+            txt.setFill(Color.WHITE);
+            txt.setWrappingWidth(0);
+            double tW = txt.getLayoutBounds().getWidth();
+            double tH = txt.getLayoutBounds().getHeight();
+            txt.setX(p[0] - tW / 2.0);
+            txt.setY(p[1] + tH * 0.35);
+            c.getChildren().add(txt);
         }
         for (TreeItem<String> h : n.getChildren()) paintNodes(h, pos, c, s);
     }
@@ -809,15 +938,43 @@ public class MainFX extends Application {
     }
 
     private String shortLabel(String lbl) {
-        return lbl.replace("instruccion_","inst_").replace("programa_","prog_")
-                  .replace("declaracion_","decl_").replace("bloque_","blq_")
-                  .replace("meta_instruccion","meta").replace("propiedades","props");
+        return lbl
+            .replace("programa_",          "prog_")
+            .replace("cuerpo_",            "body_")
+            .replace("meta_instruccion",   "meta")
+            .replace("decl_nodo_simple",   "nodo_simple")
+            .replace("decl_nodo_texto",    "nodo_texto")
+            .replace("conexion_flujo",     "conexion")
+            .replace("bloque_bd",          "bloque_bd")
+            .replace("componente_lineal_bd","comp_lineal")
+            .replace("componente_red",     "comp_red")
+            .replace("propiedad_red",      "prop_red")
+            .replace("enlace_red",         "enlace")
+            .replace("relacion_conceptual","rel_concept")
+            .replace("relacion_uml",       "rel_uml")
+            .replace("relacion_bd",        "rel_bd")
+            .replace("decl_concepto",      "concepto")
+            .replace("decl_lineal_uml",    "lineal_uml")
+            .replace("decl_clase",         "clase")
+            .replace("miembro_clase",      "miembro")
+            .replace("instruccion_no_reconocida", "desconocida");
     }
 
     private String extractLexema(String label) {
         int a = label.indexOf("'"), b = label.lastIndexOf("'");
-        if (a >= 0 && b > a) return label.substring(a, b + 1);
+        if (a >= 0 && b > a) {
+            String lexema = label.substring(a + 1, b);
+            if (lexema.length() > 15) lexema = lexema.substring(0, 14) + "…";
+            return "'" + lexema + "'";
+        }
         return label;
+    }
+
+    // ── Helper: crea un nodo no-terminal (óvalo en el árbol) ─────────────────
+    private TreeItem<String> ntItem(String nombre) {
+        TreeItem<String> n = new TreeItem<>(nombre);
+        n.setExpanded(true);
+        return n;
     }
 
     private TreeItem<String> construirNodoRegla(List<Token> grupo, String modulo) {
@@ -825,44 +982,41 @@ public class MainFX extends Application {
         Token primero = grupo.get(0);
         String lex = primero.getLexema();
 
-        // ── Cabecera ──────────────────────────────────────────────────────────
+        // ── Cabecera: 'diagrama' tipo_diagrama ';' ────────────────────────────
         if (primero.getTipo() == Token.Tipo.PR_DIAGRAMA) {
-            TreeItem<String> nodo = new TreeItem<>("cabecera");
-            nodo.setExpanded(true);
+            TreeItem<String> nodo = ntItem("cabecera");
             for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
             return nodo;
         }
 
-        // ── Meta-instrucciones ────────────────────────────────────────────────
+        // ── Meta-instruccion: kw_meta TEXTO_LITERAL ';' ───────────────────────
         if (lex.equals("autor") || lex.equals("version") || lex.equals("tema") ||
             lex.equals("exportar") || lex.equals("importar")) {
-            TreeItem<String> nodo = new TreeItem<>("meta_instruccion");
-            nodo.setExpanded(true);
+            TreeItem<String> nodo = ntItem("meta_instruccion");
             for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
             return nodo;
         }
 
         // ── Módulo FLUJO ──────────────────────────────────────────────────────
         if (modulo.equals("flujo")) {
+            // decl_nodo_simple ::= ('inicio'|'fin') IDENTIFICADOR ';'
             if (lex.equals("inicio") || lex.equals("fin")) {
-                TreeItem<String> nodo = new TreeItem<>("decl_" + lex);
-                nodo.setExpanded(true);
+                TreeItem<String> nodo = ntItem("decl_nodo_simple");
                 for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
                 return nodo;
             }
+            // decl_nodo_texto ::= kw_nodo_texto IDENTIFICADOR TEXTO_LITERAL ';'
             if (lex.equals("nodo") || lex.equals("condicion") || lex.equals("bucle") ||
                 lex.equals("subproceso") || lex.equals("entrada") || lex.equals("salida") ||
                 lex.equals("parada")) {
-                TreeItem<String> nodo = new TreeItem<>("decl_nodo_" + lex);
-                nodo.setExpanded(true);
+                TreeItem<String> nodo = ntItem("decl_nodo_texto");
                 for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
                 return nodo;
             }
-            // conexión: ID conecta ID ;
+            // conexion_flujo ::= IDENTIFICADOR 'conecta' IDENTIFICADOR ';'
             for (Token t : grupo) {
                 if (t.getLexema().equals("conecta")) {
-                    TreeItem<String> nodo = new TreeItem<>("instruccion_conexion");
-                    nodo.setExpanded(true);
+                    TreeItem<String> nodo = ntItem("conexion_flujo");
                     for (Token tk : grupo) nodo.getChildren().add(tokenItem(tk));
                     return nodo;
                 }
@@ -871,46 +1025,43 @@ public class MainFX extends Application {
 
         // ── Módulo BD ─────────────────────────────────────────────────────────
         if (modulo.equals("bd")) {
-            if (lex.equals("tabla") || lex.equals("vista") || lex.equals("esquema") ||
-                lex.equals("paquete")) {
-                TreeItem<String> nodo = new TreeItem<>("bloque_" + lex);
-                nodo.setExpanded(true);
-                // Nombre del elemento
-                if (grupo.size() > 1) nodo.getChildren().add(tokenItem(grupo.get(1)));
-                // Atributos dentro del bloque {}
-                TreeItem<String> bloque = new TreeItem<>("atributos");
-                bloque.setExpanded(true);
+            // bloque_bd ::= kw_bloque_bd IDENTIFICADOR '{' atributo* '}'
+            if (lex.equals("tabla") || lex.equals("vista") || lex.equals("esquema") || lex.equals("paquete")) {
+                TreeItem<String> nodo = ntItem("bloque_bd");
                 boolean dentro = false;
                 List<Token> atributoActual = new ArrayList<>();
-                for (int i = 2; i < grupo.size(); i++) {
-                    Token t = grupo.get(i);
-                    if (t.getTipo() == Token.Tipo.LLAVE_IZQ) { dentro = true; continue; }
-                    if (t.getTipo() == Token.Tipo.LLAVE_DER) { dentro = false; continue; }
-                    if (dentro) {
+                for (Token t : grupo) {
+                    if (t.getTipo() == Token.Tipo.LLAVE_IZQ) {
+                        nodo.getChildren().add(tokenItem(t));
+                        dentro = true;
+                    } else if (t.getTipo() == Token.Tipo.LLAVE_DER) {
+                        dentro = false;
+                        nodo.getChildren().add(tokenItem(t));
+                    } else if (!dentro) {
+                        nodo.getChildren().add(tokenItem(t));
+                    } else {
                         atributoActual.add(t);
                         if (t.getTipo() == Token.Tipo.PUNTO_Y_COMA) {
-                            TreeItem<String> atrib = new TreeItem<>("decl_atributo");
-                            atrib.setExpanded(true);
+                            TreeItem<String> atrib = ntItem("atributo");
                             for (Token at : atributoActual) atrib.getChildren().add(tokenItem(at));
-                            bloque.getChildren().add(atrib);
+                            nodo.getChildren().add(atrib);
                             atributoActual.clear();
                         }
                     }
                 }
-                nodo.getChildren().add(bloque);
                 return nodo;
             }
+            // componente_lineal_bd ::= kw_lineal_bd IDENTIFICADOR ';'
             if (lex.equals("procedimiento") || lex.equals("funcion") || lex.equals("indice") ||
                 lex.equals("disparador") || lex.equals("secuencia")) {
-                TreeItem<String> nodo = new TreeItem<>("decl_" + lex);
-                nodo.setExpanded(true);
+                TreeItem<String> nodo = ntItem("componente_lineal_bd");
                 for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
                 return nodo;
             }
+            // relacion_bd ::= IDENTIFICADOR 'relaciona' IDENTIFICADOR ';'
             for (Token t : grupo) {
                 if (t.getLexema().equals("relaciona")) {
-                    TreeItem<String> nodo = new TreeItem<>("instruccion_relacion");
-                    nodo.setExpanded(true);
+                    TreeItem<String> nodo = ntItem("relacion_bd");
                     for (Token tk : grupo) nodo.getChildren().add(tokenItem(tk));
                     return nodo;
                 }
@@ -919,55 +1070,115 @@ public class MainFX extends Application {
 
         // ── Módulo REDES ──────────────────────────────────────────────────────
         if (modulo.equals("redes")) {
+            // componente_red ::= kw_componente_red IDENTIFICADOR IDENTIFICADOR ['{' propiedad_red* '}'] ';'
             if (lex.equals("dispositivo") || lex.equals("nube") || lex.equals("vlan") ||
                 lex.equals("subred") || lex.equals("cluster") || lex.equals("tunel") ||
                 lex.equals("zona") || lex.equals("puerto") || lex.equals("politica")) {
-                TreeItem<String> nodo = new TreeItem<>("decl_dispositivo");
-                nodo.setExpanded(true);
-                // Nombre y tipo
-                List<Token> cabecera = new ArrayList<>();
-                TreeItem<String> props = new TreeItem<>("propiedades");
-                props.setExpanded(true);
+                TreeItem<String> nodo = ntItem("componente_red");
                 boolean dentro = false;
                 List<Token> propActual = new ArrayList<>();
-                for (int i = 0; i < grupo.size(); i++) {
-                    Token t = grupo.get(i);
-                    if (t.getTipo() == Token.Tipo.LLAVE_IZQ) { dentro = true; continue; }
-                    if (t.getTipo() == Token.Tipo.LLAVE_DER) { dentro = false; continue; }
-                    if (!dentro) { cabecera.add(t); }
-                    else {
+                for (Token t : grupo) {
+                    if (t.getTipo() == Token.Tipo.LLAVE_IZQ) {
+                        nodo.getChildren().add(tokenItem(t));
+                        dentro = true;
+                    } else if (t.getTipo() == Token.Tipo.LLAVE_DER) {
+                        dentro = false;
+                        nodo.getChildren().add(tokenItem(t));
+                    } else if (!dentro) {
+                        nodo.getChildren().add(tokenItem(t));
+                    } else {
                         propActual.add(t);
                         if (t.getTipo() == Token.Tipo.PUNTO_Y_COMA) {
-                            TreeItem<String> prop = new TreeItem<>("propiedad");
-                            prop.setExpanded(true);
+                            TreeItem<String> prop = ntItem("propiedad_red");
                             for (Token pt : propActual) prop.getChildren().add(tokenItem(pt));
-                            props.getChildren().add(prop);
+                            nodo.getChildren().add(prop);
                             propActual.clear();
                         }
                     }
                 }
-                for (Token t : cabecera) nodo.getChildren().add(tokenItem(t));
-                if (!props.getChildren().isEmpty()) nodo.getChildren().add(props);
                 return nodo;
             }
+            // enlace_red ::= IDENTIFICADOR 'enlaza' IDENTIFICADOR ';'
             for (Token t : grupo) {
                 if (t.getLexema().equals("enlaza")) {
-                    TreeItem<String> nodo = new TreeItem<>("instruccion_enlace");
-                    nodo.setExpanded(true);
+                    TreeItem<String> nodo = ntItem("enlace_red");
                     for (Token tk : grupo) nodo.getChildren().add(tokenItem(tk));
                     return nodo;
                 }
             }
         }
 
-        // Instrucción no reconocida — mostrar tokens sin etiquetar
-        TreeItem<String> nodo = new TreeItem<>("instruccion_desconocida");
+        // ── Módulo CONCEPTUAL ─────────────────────────────────────────────────
+        if (modulo.equals("conceptual")) {
+            // decl_concepto ::= ('concepto'|'categoria'|'propiedad') IDENTIFICADOR TEXTO_LITERAL ';'
+            if (lex.equals("concepto") || lex.equals("categoria") || lex.equals("propiedad")) {
+                TreeItem<String> nodo = ntItem("decl_concepto");
+                for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
+                return nodo;
+            }
+            // relacion_conceptual ::= IDENTIFICADOR ('agrupa'|'asocia'|'depende') IDENTIFICADOR ';'
+            for (Token t : grupo) {
+                if (t.getLexema().equals("agrupa") || t.getLexema().equals("asocia") || t.getLexema().equals("depende")) {
+                    TreeItem<String> nodo = ntItem("relacion_conceptual");
+                    for (Token tk : grupo) nodo.getChildren().add(tokenItem(tk));
+                    return nodo;
+                }
+            }
+        }
+
+        // ── Módulo UML ────────────────────────────────────────────────────────
+        if (modulo.equals("uml")) {
+            // decl_clase ::= 'clase' IDENTIFICADOR '{' miembro_clase* '}'
+            if (lex.equals("clase")) {
+                TreeItem<String> nodo = ntItem("decl_clase");
+                boolean dentro = false;
+                List<Token> miembroActual = new ArrayList<>();
+                for (Token t : grupo) {
+                    if (t.getTipo() == Token.Tipo.LLAVE_IZQ) {
+                        nodo.getChildren().add(tokenItem(t));
+                        dentro = true;
+                    } else if (t.getTipo() == Token.Tipo.LLAVE_DER) {
+                        dentro = false;
+                        nodo.getChildren().add(tokenItem(t));
+                    } else if (!dentro) {
+                        nodo.getChildren().add(tokenItem(t));
+                    } else {
+                        miembroActual.add(t);
+                        if (t.getTipo() == Token.Tipo.PUNTO_Y_COMA) {
+                            TreeItem<String> miembro = ntItem("miembro_clase");
+                            for (Token m : miembroActual) miembro.getChildren().add(tokenItem(m));
+                            nodo.getChildren().add(miembro);
+                            miembroActual.clear();
+                        }
+                    }
+                }
+                return nodo;
+            }
+            // decl_lineal_uml ::= ('interfaz'|'enum') IDENTIFICADOR ';'
+            if (lex.equals("interfaz") || lex.equals("enum")) {
+                TreeItem<String> nodo = ntItem("decl_lineal_uml");
+                for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
+                return nodo;
+            }
+            // relacion_uml ::= IDENTIFICADOR ('extiende'|'implementa'|'usa') IDENTIFICADOR ';'
+            for (Token t : grupo) {
+                if (t.getLexema().equals("extiende") || t.getLexema().equals("implementa") || t.getLexema().equals("usa")) {
+                    TreeItem<String> nodo = ntItem("relacion_uml");
+                    for (Token tk : grupo) nodo.getChildren().add(tokenItem(tk));
+                    return nodo;
+                }
+            }
+        }
+
+        // Grupo no reconocido por ninguna regla
+        TreeItem<String> nodo = ntItem("instruccion_no_reconocida");
         for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
         return nodo;
     }
 
     private TreeItem<String> tokenItem(Token t) {
-        String etiqueta = t.getTipo().name() + "  →  '" + t.getLexema() + "'  [Línea " + t.getLinea() + "]";
+        String pos = "[L" + t.getLinea() + ":C" + t.getColumna() + "]";
+        String etiqueta = t.getTipo().name() + "  →  '" + t.getLexema() + "'  " + pos;
         return new TreeItem<>(etiqueta);
     }
 

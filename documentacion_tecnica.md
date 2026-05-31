@@ -16,10 +16,14 @@
 5. [Modulo de Flujo](#5-modulo-de-flujo)
 6. [Modulo de Base de Datos](#6-modulo-de-base-de-datos)
 7. [Modulo de Redes](#7-modulo-de-redes)
-8. [Tabla de Simbologia Estatica](#8-tabla-de-simbologia-estatica)
-9. [Interfaz Grafica (JavaFX)](#9-interfaz-grafica-javafx)
-10. [Decisiones de Disenio](#10-decisiones-de-disenio)
-11. [Estructura de Archivos del Proyecto](#11-estructura-de-archivos-del-proyecto)
+8. [Modulo Conceptual](#8-modulo-conceptual)
+9. [Modulo UML](#9-modulo-uml)
+10. [Gramatica Formal del Lenguaje](#10-gramatica-formal-del-lenguaje)
+11. [Tabla de Simbologia Estatica](#11-tabla-de-simbologia-estatica)
+12. [Interfaz Grafica (JavaFX)](#12-interfaz-grafica-javafx)
+13. [Decisiones de Disenio](#13-decisiones-de-disenio)
+14. [Estructura de Archivos del Proyecto](#14-estructura-de-archivos-del-proyecto)
+15. [Historial de Cambios](#15-historial-de-cambios)
 
 ---
 
@@ -59,12 +63,12 @@ abstracto. Este proyecto materializa esos conceptos con un caso real:
 
 ### Por que se eligio el dominio de "diagramas"
 
-Los diagramas (flujo, BD, redes) tienen una gramatica natural sencilla:
+Los diagramas (flujo, BD, redes, conceptual, UML) tienen una gramatica natural sencilla:
 declarar elementos y luego conectarlos. Esto resulta en:
 
   - Gramaticas de complejidad baja-media (ideales para ensenar)
   - Vocabulario familiar para estudiantes de ingenieria
-  - Tres modulos con suficiente diferencia entre si para mostrar extension del DSL
+  - Cinco modulos con suficiente diferencia entre si para mostrar extension del DSL
 
 ---
 
@@ -92,7 +96,7 @@ produce la entrada para la siguiente y puede detener la cadena ante errores.
   - Delega el resto de tokens al parser del modulo correcto
         |
         v (tokens restantes)
-  [ FlujoParser | BDParser | RedesParser ]
+  [ FlujoParser | BDParser | RedesParser | ConceptualParser | UMLParser ]
   - Implementan la gramatica especifica del modulo
   - Construyen el AST del diagrama
   - Validan semantica (unicidad, existencia de referencias)
@@ -185,10 +189,12 @@ parser correspondiente. Agregar un nuevo modulo solo requiere agregar
 un nuevo caso al switch.
 
   switch (tipoDiagrama) {
-      case "flujo"  --> new FlujoParser(...)
-      case "bd"     --> new BDParser(...)
-      case "redes"  --> new RedesParser(...)
-      default       --> error semantico "modulo no reconocido"
+      case "flujo"      --> new FlujoParser(...)
+      case "bd"         --> new BDParser(...)
+      case "redes"      --> new RedesParser(...)
+      case "conceptual" --> new ConceptualParser(...)
+      case "uml"        --> new UMLParser(...)
+      default           --> error semantico "modulo no reconocido"
   }
 
 ---
@@ -215,11 +221,6 @@ Actua como la memoria del compilador durante el analisis semantico.
 El acceso a nombre en O(1) es ideal para la validacion semantica, que
 consulta la existencia de identificadores con frecuencia durante el parseo.
 
-**Por que el contexto se "bloquea":**
-Una vez que el ParserBase decide el tipo de diagrama, ese contexto es
-exclusivo para todo el archivo. No puede cambiarse a mitad del archivo.
-El bloqueo hace explicito este invariante.
-
 ---
 
 ### 4.5 ManejadorErrores.java
@@ -231,6 +232,12 @@ Acumula todos los errores de compilacion en una lista con formato pedagogico.
   ERROR DE COMPILACION [Linea N] [Contexto: fase]
   Detalle: descripcion del problema
   Sugerencia: como corregirlo
+
+**Dos sobrecargas de reportarError:**
+  - reportarError(int linea, String contexto, String mensaje, String sugerencia)
+    Usada por los modulos originales (Flujo, BD, Redes) y el nucleo.
+  - reportarError(String codigo, int linea, String contexto, String mensaje, String sugerencia)
+    Usada por los modulos nuevos (Conceptual, UML) con codigo de error categorizado.
 
 **Por que acumular en vez de lanzar excepcion:**
 Lanzar una excepcion detiene la compilacion al primer error. Acumular
@@ -273,7 +280,7 @@ existe, reporta error semantico con el nombre del identificador faltante.
   ----------------|-------------------------|----------------------------
   NodoProceso     | Para todos los nodos    | id + descripcion (o rol)
   NodoConexion    | Para cada "conecta"     | id origen + id destino
-  NodoInicio      | (reservado, sin uso activo) | id
+  NodoInicio      | (definido, sin uso activo) | id
 
   Todos heredan de NodeAST (clase abstracta base de polimorfismo).
   RaizFlujoAST agrupa todos los nodos en una lista ordenada.
@@ -322,7 +329,7 @@ indica exactamente cual es el verbo correcto.
 
 ## 7. Modulo de Redes
 
-### Archivo: RedesParser.java
+### Archivo: RedesParser.java (modulos/redes/)
 
 **Que hace:**
 Parsea archivos con `diagrama Redes;` y construye el AST de una topologia de red.
@@ -335,16 +342,10 @@ sintaxis es: `dispositivo <Nombre> <Tipo> { ... };`
 El tipo se registra en la TablaSimbolos como parte del rol:
   "dispositivo_Router"  "dispositivo_Firewall"  etc.
 
-Esto permite al IDE (o a un generador futuro) saber que icono o forma
-usar para representar cada nodo.
-
 **Bloque de propiedades opcional:**
 A diferencia del modulo BD donde los bloques son obligatorios para tablas,
 en Redes el bloque { } es completamente opcional. Un dispositivo puede
 declararse sin propiedades o con varias propiedades clave-valor.
-
-Esto refleja la realidad: en un diagrama de redes a veces interesa mostrar
-la IP, la region, el numero de nodos, etc., pero no siempre es necesario.
 
 **Verbo de enlace: "enlaza"**
 Distinto de "conecta" y "relaciona" para mantener el vocabulario especifico
@@ -359,12 +360,148 @@ ni se "relacionan".
   NodoEnlace        | Para cada "enlaza"        | nombre origen + nombre destino
 
   RaizRedesAST agrupa todos los nodos.
-  Nota: RaizRedesAST usa List<Object> en vez de List<NodeAST> porque Redes
-  tiene su propia jerarquia de nodos independiente del modulo Flujo y BD.
 
 ---
 
-## 8. Tabla de Simbologia Estatica
+## 8. Modulo Conceptual
+
+### Archivo: ConceptualParser.java (modulos/conceptual/)
+
+**Que hace:**
+Parsea archivos con `diagrama Conceptual;` y construye el AST de un mapa conceptual.
+
+**Tipos de nodo:**
+  - concepto   : idea o entidad principal del mapa
+  - categoria  : agrupacion logica de conceptos
+  - propiedad  : caracteristica o atributo de un concepto
+
+Todos llevan un TEXTO_LITERAL con su descripcion. No existen nodos sin descripcion
+en este modulo — la descripcion es parte obligatoria de la declaracion.
+
+**Verbos de relacion:**
+  - agrupa   : una categoria contiene o agrupa un concepto
+  - asocia   : dos conceptos estan relacionados entre si
+  - depende  : un concepto depende de otro
+
+**Codigos de error:**
+Este modulo usa la sobrecarga extendida de reportarError con codigos (ES35–ES42)
+para categorizar los errores de forma mas precisa que los modulos anteriores.
+
+### Nodos del AST del modulo Conceptual
+
+  Clase                  | Cuando se crea         | Informacion que guarda
+  -----------------------|------------------------|----------------------------------
+  NodoConcepto           | Para concepto/categoria/propiedad | nombre + rol + descripcion
+  NodoRelacionConceptual | Para cada relacion     | origen + verbo + destino
+
+  Ambas heredan de NodeAST (com.diagramas.modulos.conceptual.ast).
+  RaizConceptualAST agrupa todos los nodos.
+
+---
+
+## 9. Modulo UML
+
+### Archivo: UMLParser.java (modulos/uml/)
+
+**Que hace:**
+Parsea archivos con `diagrama UML;` y construye el AST de un diagrama de clases UML.
+
+**Tipos de declaracion:**
+  - clase     : bloque con atributos y metodos internos (requiere { })
+  - interfaz  : declaracion lineal sin cuerpo
+  - enum      : declaracion lineal sin cuerpo
+
+**Miembros de clase:**
+Dentro de un bloque `clase { }` se declaran miembros con la forma:
+  (atributo | metodo) nombre : tipo ;
+
+Un bloque de clase vacio `clase Nombre { }` es sintacticamente valido.
+
+**Verbos de relacion:**
+  - extiende   : herencia entre clases
+  - implementa : una clase implementa una interfaz
+  - usa        : dependencia entre dos clases
+
+**Codigos de error:**
+Este modulo usa la sobrecarga extendida de reportarError con codigos (ES43–ES54).
+
+**Recuperacion de panico extendida:**
+El modulo UML implementa tres estrategias de recuperacion:
+  - recuperarPanico()         : sincroniza en ';'
+  - recuperarPanicoBloque()   : sincroniza en '}'
+  - recuperarPanicoMiembro()  : sincroniza en ';' o '}'
+
+### Nodos del AST del modulo UML
+
+  Clase          | Cuando se crea              | Informacion que guarda
+  ---------------|-----------------------------|----------------------------------
+  NodoClase      | Para clase/interfaz/enum    | nombre + lista de NodoMiembro
+  NodoMiembro    | Para atributo/metodo        | rol + nombre + tipo
+  NodoRelacionUML| Para cada relacion          | origen + verbo + destino
+
+  NodoClase y NodoRelacionUML heredan de NodeAST (com.diagramas.modulos.uml.ast).
+  NodoMiembro NO hereda de NodeAST (es un componente interno de NodoClase).
+  RaizUMLAST agrupa todos los nodos.
+
+---
+
+## 10. Gramatica Formal del Lenguaje
+
+### Descripcion
+
+La gramatica completa del lenguaje DAC esta documentada en formato EBNF en el
+archivo dedicado:
+
+  gramatica_formal.md
+
+Ese archivo contiene:
+  - Definicion de todos los tokens producidos por el Lexer
+  - Reglas de produccion de la cabecera global (ParserBase)
+  - Gramatica de cada uno de los cinco modulos
+  - Vista consolidada de toda la gramatica en un solo bloque
+  - Tabla de conjuntos FIRST de las instrucciones principales
+  - Analisis de las propiedades de la gramatica (LL(1), resolucion de ambiguedad)
+
+### Tipo de gramatica
+
+La gramatica es LL(1) — analizable de izquierda a derecha con un lookahead de
+exactamente 1 token. El analizador implementado en todos los parsers es un
+Recursive Descent Parser (analizador descendente recursivo).
+
+### Punto de entrada de cada modulo
+
+  Modulo      | No-terminal raiz    | Parser responsable
+  ------------|---------------------|-----------------------
+  Global      | programa            | ParserBase
+  Flujo       | cuerpo_flujo        | FlujoParser
+  BD          | cuerpo_bd           | BDParser
+  Redes       | cuerpo_redes        | RedesParser
+  Conceptual  | cuerpo_conceptual   | ConceptualParser
+  UML         | cuerpo_uml          | UMLParser
+
+### Palabras reservadas por modulo
+
+Todas las palabras reservadas del lenguaje (excepto "diagrama") son tokenizadas
+como IDENTIFICADOR por el Lexer. El Parser las reconoce por su posicion en la
+gramatica, no por su tipo de token. Esto permite un Lexer generico y estable
+que no necesita modificarse al agregar nuevos modulos.
+
+  Modulo      | Palabras reservadas
+  ------------|----------------------------------------------------------
+  Global      | diagrama, autor, version, tema, exportar, importar
+  Flujo       | inicio, fin, nodo, condicion, bucle, subproceso,
+              | entrada, salida, parada, conecta
+  BD          | tabla, vista, esquema, paquete, procedimiento, indice,
+              | disparador, secuencia, funcion, relaciona
+  Redes       | dispositivo, nube, vlan, subred, cluster, tunel,
+              | zona, puerto, politica, enlaza
+  Conceptual  | concepto, categoria, propiedad, agrupa, asocia, depende
+  UML         | clase, interfaz, enum, atributo, metodo,
+              | extiende, implementa, usa
+
+---
+
+## 11. Tabla de Simbologia Estatica
 
 ### Archivo: TablaSimbologiaEstatica.java
 
@@ -384,43 +521,46 @@ que hacen", independientemente de como los clasifique el lexer internamente.
 
 **Estructura de cada entrada:**
 
-  Campo     | Tipo   | Descripcion
-  ----------|--------|---------------------------------------------
-  lexema    | String | El texto exacto tal como aparece en el .dac
-  tipoToken | String | Clasificacion del token segun LexerBase
-  categoria | String | Grupo semantico (Flujo-Nodo, BD-Bloque, etc.)
+  Campo       | Tipo   | Descripcion
+  ------------|--------|---------------------------------------------
+  lexema      | String | El texto exacto tal como aparece en el .dac
+  tipoToken   | String | Clasificacion del token segun LexerBase
+  categoria   | String | Grupo semantico (Flujo-Nodo, BD-Bloque, etc.)
   descripcion | String | Explicacion del proposito del simbolo
+
+**Total de simbolos registrados: 57**
+(43 originales + 14 nuevos de los modulos Conceptual y UML)
 
 **Metodo filtrar(String modulo):**
 Permite obtener un subconjunto de la tabla segun el modulo activo.
-Los filtros de modulo (Flujo, BD, Redes) incluyen automaticamente los
-simbolos globales (Cabecera, Meta-Instruccion) y de puntuacion porque
-son comunes a todos los diagramas.
 
-  Opcion      | Que incluye
-  ------------|-----------------------------------------------------
-  "Todos"     | Los 42 simbolos completos
-  "Flujo"     | Global + Flujo-Nodo + Flujo-Verbo + Puntuacion
-  "BD"        | Global + BD-Bloque + BD-Lineal + BD-Verbo + Puntuacion
-  "Redes"     | Global + Redes-Componente + Redes-Verbo + Puntuacion
-  "Global"    | Solo Cabecera y Meta-Instruccion (6 simbolos)
-  "Puntuacion"| Solo Puntuacion + Literal + Comentario (7 simbolos)
+  Opcion       | Que incluye
+  -------------|------------------------------------------------------
+  "Todos"      | Los 55 simbolos completos
+  "Flujo"      | Global + Flujo + Puntuacion
+  "BD"         | Global + BD + Puntuacion
+  "Redes"      | Global + Redes + Puntuacion
+  "Conceptual" | Global + Conceptual + Puntuacion
+  "UML"        | Global + UML + Puntuacion
+  "Global"     | Solo Cabecera y Meta-instrucciones
+  "Puntuacion" | Solo Puntuacion + Literal + Comentarios
 
 **Uso en consola (Main.java):**
-`TablaSimbologiaEstatica.imprimir()` se llama al inicio de cada ejecucion
+TablaSimbologiaEstatica.imprimir() se llama al inicio de cada ejecucion
 para mostrar el catalogo completo antes del analisis del archivo.
 
 **Uso en interfaz (MainFX.java):**
-El metodo `filtrar()` alimenta el TableView de la ventana modal de simbologia.
+El metodo filtrar() alimenta el TableView de la ventana modal de simbologia.
+El ComboBox de la ventana ofrece 8 opciones de filtro (incluye Conceptual y UML).
 
 ---
 
-## 9. Interfaz Grafica (JavaFX)
+## 12. Interfaz Grafica (JavaFX)
 
 ### Archivo: MainFX.java
 
 **Que es:**
-La interfaz grafica del IDE pedagogico. Implementa `javafx.application.Application`
+La interfaz grafica del IDE pedagogico. Implementa javafx.application.Application
 y construye toda la UI de forma programatica (sin FXML).
 
 **Por que JavaFX y no Swing:**
@@ -431,35 +571,33 @@ JavaFX es el framework moderno de Java para UI de escritorio. Provee:
   - TextArea nativa con scroll
   - TableView con columnas y cell factories para datos tabulares
 
-**Por que sin FXML:**
-Para mantener toda la logica de UI en un solo archivo Java y facilitar
-la lectura y modificacion pedagogica sin depender de un editor visual.
-
 ### Estructura de la ventana principal
 
   BorderPane (root)
-  ├── TOP: HBox toolbar
-  │    ├── Label "Diagrams As Code"
-  │    ├── Button Nuevo       (naranja)
-  │    ├── Button Abrir       (azul)
-  │    ├── Button Guardar     (morado)
-  │    ├── Button Compilar    (verde)
-  │    ├── Region espaciador  (crece para llenar el espacio)
-  │    ├── Button Simbologia  (verde oscuro) --> ventana modal tabla
-  │    └── Button Manual      (azul oscuro)  --> ventana modal manual
-  │
-  ├── CENTER: SplitPane
-  │    ├── VBox panelEditor
-  │    │    └── TabPane (una Tab por archivo abierto)
-  │    └── VBox panelAnalisis
-  │         ├── Label "1. Tokens:"
-  │         ├── TextArea txtTokens   (solo lectura)
-  │         ├── Label "2. Tabla de Simbolos:"
-  │         └── TextArea txtSimbolos (solo lectura)
-  │
-  └── BOTTOM: VBox panelConsola
-       ├── Label "Consola:"
-       └── TextArea txtConsola (solo lectura)
+  |-- TOP: HBox toolbar
+  |    |-- Label "Diagrams As Code"
+  |    |-- Button Nuevo          (naranja)
+  |    |-- Button Abrir          (azul)
+  |    |-- Button Guardar        (morado)
+  |    |-- Button Compilar       (verde)
+  |    |-- Button Errores Lexicos (rojo)     --> catalogo de errores lexicos
+  |    |-- Button Arbol Derivacion (teal)    --> arbol de derivacion grafico
+  |    |-- Region espaciador     (crece para llenar el espacio)
+  |    |-- Button Simbologia     (verde oscuro) --> tabla estatica de simbolos
+  |    |-- Button Manual         (azul oscuro)  --> manual de usuario
+  |
+  |-- CENTER: SplitPane
+  |    |-- VBox panelEditor
+  |    |    |-- TabPane (una Tab por archivo abierto)
+  |    |-- VBox panelAnalisis
+  |         |-- Label "1. Tokens:"
+  |         |-- TextArea txtTokens   (solo lectura)
+  |         |-- Label "2. Tabla de Simbolos:"
+  |         |-- TextArea txtSimbolos (solo lectura)
+  |
+  |-- BOTTOM: VBox panelConsola
+       |-- Label "Consola:"
+       |-- TextArea txtConsola (solo lectura)
 
 ### Como funciona el compilador en la GUI
 
@@ -474,33 +612,44 @@ la lectura y modificacion pedagogica sin depender de un editor visual.
       8. Si no hay errores --> "COMPILACION EXITOSA"
   }
 
-### Por que el espaciador (Region con HGrow.ALWAYS)
-
-Los botones de accion principal (Nuevo, Abrir, Guardar, Compilar) estan
-al lado izquierdo del titulo. Los botones de referencia (Simbologia, Manual)
-estan al extremo derecho. El Region con Priority.ALWAYS consume todo el
-espacio disponible entre ambos grupos, empujando los botones de referencia
-al extremo sin importar el ancho de la ventana.
-
 ### Ventana modal de Simbologia
 
   - Stage con initModality(APPLICATION_MODAL) e initOwner(primaryStage)
-  - Bloquea la ventana principal mientras esta abierta
   - TableView con 4 columnas usando SimpleStringProperty como CellValueFactory
-  - TableRow factory para colorear filas por categoria
-  - ComboBox que llama a TablaSimbologiaEstatica.filtrar() y actualiza
-    el ObservableList de la tabla dinamicamente
+  - TableRow factory para colorear filas por modulo
+  - ComboBox con 8 opciones que llama a TablaSimbologiaEstatica.filtrar()
+  - Conteo dinamico de simbolos al cambiar el filtro
 
 ### Ventana modal del Manual
 
-  - Stage con initModality(APPLICATION_MODAL) e initOwner(primaryStage)
-  - Lee `manual_diagrams_as_code.md` desde el directorio de trabajo
-  - Muestra el contenido en un TextArea monoespaciado de solo lectura
-  - Si el archivo no se encuentra, muestra un mensaje de error descriptivo
+  - Abre manual_diagrams_as_code.md desde el directorio de trabajo
+  - TextArea monoespaciado, solo lectura, con scroll
+  - Header coloreado por tipo de documento
+
+### Arbol de Derivacion
+
+  - Alineado con la gramatica formal EBNF definida en gramatica_formal.md
+  - Agrupacion de tokens por instruccion: divide en ';' a profundidad 0 y en '}'
+    cuando la profundidad pasa de 1 a 0 (necesario para bloques BD y UML sin ';' final)
+  - Estructura del arbol:
+      programa_<modulo>
+      |-- meta_instruccion (0 o mas)
+      |-- cabecera
+      |-- cuerpo_<modulo>
+          |-- <regla_gramatical> por cada instruccion del modulo
+  - Reglas reconocidas por modulo:
+      Flujo:      decl_nodo_simple, decl_nodo_texto, conexion_flujo
+      BD:         bloque_bd (con atributo*), componente_lineal_bd, relacion_bd
+      Redes:      componente_red (con propiedad_red*), enlace_red
+      Conceptual: decl_concepto, relacion_conceptual
+      UML:        decl_clase (con miembro_clase*), decl_lineal_uml, relacion_uml
+  - Nodos: ovalo = no-terminal (regla gramatical) | rectangulo = terminal (token)
+  - Soporta zoom (+/-/ajustar) y pantalla completa
+  - Se muestra como pestana adicional dentro del editor
 
 ---
 
-## 10. Decisiones de Disenio
+## 13. Decisiones de Disenio
 
 ### Por que las palabras reservadas de modulo son IDENTIFICADOR y no PR_*
 
@@ -514,24 +663,13 @@ reservadas por contexto (posicion en la gramatica).
 Ventaja: el lexer es un componente estable que nunca necesita cambios.
 La extension del lenguaje se hace agregando parsers, no modificando el nucleo.
 
-### Por que tres modulos independientes con sus propios AST
+### Por que cinco modulos con sus propios AST
 
 Alternativa descartada: un solo AST generico con nodos tipados.
 
-Razon: los tres modulos tienen gramaticas genuinamente diferentes:
-  - Flujo: nodos unarios con conexiones dirigidas
-  - BD: nodos con estructura interna (atributos) y relaciones
-  - Redes: nodos con tipo y configuracion clave-valor
-
+Razon: los cinco modulos tienen gramaticas genuinamente diferentes.
 Un AST generico habria requerido mucho casting o generics complejos.
-Tres AST independientes son mas simples de entender y mas seguros de tipo.
-
-### Por que el RedesParser esta en modulos/ y no en modulos/redes/
-
-El RedesParser.java esta ubicado en com.diagramas.modulos.RedesParser
-en vez de com.diagramas.modulos.redes.RedesParser como seria lo ideal.
-Esto es un residuo de como se agrego el modulo durante el desarrollo.
-Los nodos AST de Redes si estan correctamente en com.diagramas.modulos.redes.ast.
+Cinco AST independientes son mas simples de entender y mas seguros de tipo.
 
 ### Por que la recuperacion de panico sincroniza en ';'
 
@@ -548,9 +686,17 @@ en tiempo de ejecucion. El wrapper unmodifiable lanza UnsupportedOperationExcept
 si algo intenta agregar o eliminar entradas, protegiendola de modificaciones
 accidentales desde cualquier parte del codigo.
 
+### Por que el espaciador (Region con HGrow.ALWAYS) en la toolbar
+
+Los botones de accion principal (Nuevo, Abrir, Guardar, Compilar, Errores, Arbol)
+estan al lado izquierdo. Los botones de referencia (Simbologia, Manual) estan al
+extremo derecho. El Region con Priority.ALWAYS consume todo el espacio disponible
+entre ambos grupos, empujando los botones de referencia al extremo sin importar
+el ancho de la ventana.
+
 ---
 
-## 11. Estructura de Archivos del Proyecto
+## 14. Estructura de Archivos del Proyecto
 
   DiagramsAsCode/
   |
@@ -559,28 +705,26 @@ accidentales desde cualquier parte del codigo.
   |   |-- MainFX.java            Punto de entrada GUI (con JavaFX)
   |   |
   |   |-- core/
-  |   |   |-- LexerBase.java         Analizador lexico
-  |   |   |-- Token.java             Modelo de token (tipo + lexema + linea)
-  |   |   |-- TipoToken.java         (Archivo vacio, tipos definidos en Token.java)
-  |   |   |-- ParserBase.java        Parser de cabecera + delegador de modulos
-  |   |   |-- TablaSimbolos.java     Registro de identificadores en tiempo de analisis
-  |   |   |-- ManejadorErrores.java  Acumulador de errores de compilacion
-  |   |   |-- TablaSimbologiaEstatica.java  Catalogo estatico de simbolos del lenguaje
+  |   |   |-- LexerBase.java              Analizador lexico
+  |   |   |-- Token.java                  Modelo de token (tipo + lexema + linea)
+  |   |   |-- TipoToken.java              (Archivo vacio — tipos en Token.java)
+  |   |   |-- ParserBase.java             Parser de cabecera + delegador de modulos
+  |   |   |-- TablaSimbolos.java          Registro de identificadores
+  |   |   |-- ManejadorErrores.java       Acumulador de errores de compilacion
+  |   |   |-- TablaSimbologiaEstatica.java  Catalogo estatico de 55 simbolos del DSL
   |   |
   |   |-- modulos/
-  |       |-- RedesParser.java       Parser del modulo Redes (deberia estar en redes/)
-  |       |
   |       |-- flujo/
-  |       |   |-- FlujoParser.java   Parser del modulo Flujo
+  |       |   |-- FlujoParser.java        Parser del modulo Flujo
   |       |   |-- ast/
   |       |       |-- NodeAST.java        Clase base abstracta de nodos Flujo
   |       |       |-- NodoProceso.java    Nodo generico (nodo/condicion/entrada/etc.)
   |       |       |-- NodoConexion.java   Arista dirigida entre dos nodos
-  |       |       |-- NodoInicio.java     Nodo de inicio (reservado)
+  |       |       |-- NodoInicio.java     Nodo de inicio (definido, sin instanciar)
   |       |       |-- RaizFlujoAST.java   Contenedor raiz del AST de Flujo
   |       |
   |       |-- bd/
-  |       |   |-- BDParser.java      Parser del modulo Base de Datos
+  |       |   |-- BDParser.java           Parser del modulo Base de Datos
   |       |   |-- ast/
   |       |       |-- NodeAST.java        Clase base abstracta de nodos BD
   |       |       |-- NodoTabla.java      Tabla/Vista/Esquema/Paquete con atributos
@@ -589,42 +733,99 @@ accidentales desde cualquier parte del codigo.
   |       |       |-- RaizBDAST.java      Contenedor raiz del AST de BD
   |       |
   |       |-- redes/
+  |       |   |-- RedesParser.java        Parser del modulo Redes
+  |       |   |-- ast/
+  |       |       |-- NodoDispositivo.java  Componente de red (nombre + tipo + config)
+  |       |       |-- NodoEnlace.java       Enlace entre dos dispositivos
+  |       |       |-- RaizRedesAST.java     Contenedor raiz del AST de Redes
+  |       |
+  |       |-- conceptual/
+  |       |   |-- ConceptualParser.java   Parser del modulo Conceptual
+  |       |   |-- ast/
+  |       |       |-- NodeAST.java        Clase base abstracta de nodos Conceptual
+  |       |       |-- NodoConcepto.java   Nodo de concepto/categoria/propiedad
+  |       |       |-- NodoRelacionConceptual.java  Relacion entre conceptos
+  |       |       |-- RaizConceptualAST.java       Contenedor raiz del AST Conceptual
+  |       |
+  |       |-- uml/
+  |           |-- UMLParser.java          Parser del modulo UML
   |           |-- ast/
-  |               |-- NodoDispositivo.java  Componente de red (nombre + tipo + config)
-  |               |-- NodoEnlace.java       Enlace entre dos dispositivos
-  |               |-- RaizRedesAST.java     Contenedor raiz del AST de Redes
+  |               |-- NodeAST.java        Clase base abstracta de nodos UML
+  |               |-- NodoClase.java      Clase/Interfaz/Enum UML
+  |               |-- NodoMiembro.java    Atributo o metodo dentro de una clase
+  |               |-- NodoRelacionUML.java  Relacion entre clases
+  |               |-- RaizUMLAST.java     Contenedor raiz del AST UML
   |
   |-- out/production/DiagramsAsCode/   Clases compiladas (generado automaticamente)
-  |
   |-- javafx-sdk-21.0.9/               JavaFX SDK para ejecucion desde linea de comandos
   |
-  |-- test_flujo_completo.dac          Archivo de prueba del modulo Flujo
-  |-- test_bd_avanzado.dac             Archivo de prueba del modulo BD
-  |-- test_redes_nube.dac              Archivo de prueba del modulo Redes
+  |-- test_flujo_completo.dac          Prueba del modulo Flujo (valido)
+  |-- test_bd_avanzado.dac             Prueba del modulo BD (valido)
+  |-- test_redes_nube.dac              Prueba del modulo Redes (valido)
+  |-- test_conceptual_completo.dac     Prueba del modulo Conceptual (valido)
+  |-- test_UML_completo.dac            Prueba del modulo UML (valido)
   |
   |-- manual_diagrams_as_code.md       Manual de usuario del lenguaje DAC
+  |-- gramatica_formal.md              Gramatica EBNF formal de los cinco modulos
   |-- documentacion_tecnica.md         Este archivo
+  |-- documentacion_Javier.md          Documentacion complementaria del equipo
+  |-- integracion.md                   Notas de integracion entre ramas
+  |-- pruebas.md                       Registro de pruebas realizadas
+  |-- ejecutar.ps1                     Script PowerShell para ejecutar la aplicacion
   |-- DiagramsAsCode.iml               Configuracion del modulo IntelliJ IDEA
 
 ---
 
 ## Resumen de Componentes por Funcion
 
-  Componente                  | Funcion
-  ----------------------------|---------------------------------------------------
-  LexerBase                   | Texto --> Tokens
-  Token                       | Modelo de unidad lexica
-  ParserBase                  | Cabecera + delegacion de modulos
-  FlujoParser                 | Gramatica + AST del modulo Flujo
-  BDParser                    | Gramatica + AST del modulo Base de Datos
-  RedesParser                 | Gramatica + AST del modulo Redes
-  TablaSimbolos               | Memoria semantica (identificadores y sus roles)
-  ManejadorErrores            | Acumulador de errores con formato pedagogico
-  TablaSimbologiaEstatica     | Catalogo oficial de simbolos del DSL
-  Main                        | Punto de entrada CLI (sin JavaFX)
-  MainFX                      | IDE grafico con editor, compilador y visualizadores
+  Componente                   | Funcion
+  -----------------------------|---------------------------------------------------
+  LexerBase                    | Texto --> Tokens
+  Token                        | Modelo de unidad lexica
+  ParserBase                   | Cabecera + delegacion a los cinco modulos
+  FlujoParser                  | Gramatica + AST del modulo Flujo
+  BDParser                     | Gramatica + AST del modulo Base de Datos
+  RedesParser                  | Gramatica + AST del modulo Redes
+  ConceptualParser             | Gramatica + AST del modulo Conceptual
+  UMLParser                    | Gramatica + AST del modulo UML
+  TablaSimbolos                | Memoria semantica (identificadores y sus roles)
+  ManejadorErrores             | Acumulador de errores con formato pedagogico
+  TablaSimbologiaEstatica      | Catalogo oficial de 55 simbolos del DSL
+  Main                         | Punto de entrada CLI (sin JavaFX)
+  MainFX                       | IDE grafico con editor, compilador y visualizadores
 
 ---
 
-*Documentacion Tecnica — Diagrams As Code*
+## 15. Historial de Cambios
+
+  Version | Fecha      | Descripcion
+  --------|------------|-----------------------------------------------------------
+  1.0     | 2026-05-30 | Version inicial: nucleo, modulos Flujo y BD
+  1.1     | 2026-05-30 | Se agrego el modulo Redes
+  1.2     | 2026-05-30 | Se agrego TablaSimbologiaEstatica (42 simbolos)
+  1.3     | 2026-05-30 | Se agrego interfaz JavaFX (MainFX) con boton de simbologia
+  1.4     | 2026-05-30 | Se agrego manual de usuario y boton de manual en la GUI
+  1.5     | 2026-05-30 | Merge rama Javier: modulos Conceptual y UML, arbol de
+          |            | derivacion grafico, boton de errores lexicos, RedesParser
+          |            | reubicado en modulos/redes/
+  1.6     | 2026-05-30 | Tarea 12 completada: gramatica formal EBNF documentada
+          |            | en gramatica_formal.md. TablaSimbologiaEstatica verificada
+          |            | con 57 simbolos (43 originales + 14 de Conceptual y UML).
+          |            | Documentacion tecnica actualizada con secciones 8, 9, 10.
+  1.8     | 2026-05-30 | Nuevo archivo automata_y_gramatica.md: explicacion formal
+          |            | del AFD del lexer, gramatica LL(1), jerarquia de Chomsky,
+          |            | conjuntos FIRST/FOLLOW y ejemplo de derivacion completo.
+          |            | Nodos del arbol de derivacion con tamano dinamico (se
+          |            | ajustan al texto sin desbordamiento). Texto centrado
+          |            | geometricamente usando getLayoutBounds().
+  1.7     | 2026-05-30 | Tarea 11 completada: arbol de derivacion alineado con la
+          |            | gramatica formal. Agrupacion corregida para bloques BD/UML
+          |            | (split en '}' ademas de ';'). Estructura jerarquica con
+          |            | programa_<mod> > cuerpo_<mod> > reglas. Nodos renombrados
+          |            | segun EBNF. Modulos Conceptual y UML incluidos en el arbol.
+          |            | Metodo ntItem() agregado. shortLabel() actualizado.
+
+---
+
+*Documentacion Tecnica — Diagrams As Code v1.6*
 *Compilador pedagogico de DSL para diagramas*
