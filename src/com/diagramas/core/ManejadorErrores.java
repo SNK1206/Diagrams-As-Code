@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ManejadorErrores {
-    private static final int MAX_ERRORES = 10;
+    private static final int MAX_ERRORES = 1000;
 
     private final List<String> errores;
     private boolean limiteSuperado = false;
@@ -14,7 +14,6 @@ public class ManejadorErrores {
     }
 
     public void reportarError(String codigo, int linea, String contexto, String mensaje, String consejo) {
-        if (contexto.contains("Semántico") || contexto.contains("Semantico")) return;
         if (errores.size() >= MAX_ERRORES) { limiteSuperado = true; return; }
 
         boolean esLexico = contexto.contains("Léxico") || contexto.contains("Lexico");
@@ -23,9 +22,9 @@ public class ManejadorErrores {
 
         String formato = String.format(
                 "==================================================\n" +
-                "❌ %sERROR %s [Línea %d]\n" +
-                "💡 Detalle: %s\n" +
-                "🔍 Consejo: %s\n" +
+                "[ERROR] %s%s [Linea %d]\n" +
+                "Detalle: %s\n" +
+                "Consejo: %s\n" +
                 "==================================================",
                 etiqueta, tipo, linea, mensaje, consejo
         );
@@ -54,8 +53,8 @@ public class ManejadorErrores {
         }
         if (limiteSuperado) {
             System.err.println("==================================================");
-            System.err.println("⚠️  Se suprimieron errores adicionales para evitar cascada.");
-            System.err.println("   Corrige los errores mostrados y vuelve a compilar.");
+            System.err.println("[!] Se suprimieron errores adicionales para evitar cascada.");
+            System.err.println("    Corrige los errores mostrados y vuelve a compilar.");
             System.err.println("==================================================");
         }
     }

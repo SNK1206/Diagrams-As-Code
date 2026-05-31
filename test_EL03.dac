@@ -1,0 +1,7 @@
+autor "Test EL03";
+version "1.0";
+diagrama Flujo;
+// EL03: identificador que inicia con digito
+// Esperado: 1 error EL03 sin cascada.
+// El lexer consume '3nodo' completo; no quedan tokens huerfanos.
+3nodo

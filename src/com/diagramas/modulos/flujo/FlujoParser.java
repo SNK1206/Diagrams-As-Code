@@ -50,7 +50,6 @@ public class FlujoParser {
     }
 
     private void procesarNodoSimple(RaizFlujoAST raiz, String rol) {
-        int lineaOriginal = tokens.get(pos).getLinea();
         pos++;
 
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador después de '" + rol + "'.")) {
@@ -63,14 +62,11 @@ public class FlujoParser {
             recuperarPanico(); return;
         }
         pos++;
-        if (!tabla.registrar(nombre, rol)) {
-            errores.reportarError("", lineaOriginal, "Semántico Flujo", "El identificador '" + nombre + "' ya existe.", "Usa un nombre diferente.");
-        }
+        tabla.registrar(nombre, rol);
         raiz.agregarElemento(new NodoProceso(nombre, "[" + rol.toUpperCase() + "]"));
     }
 
     private void procesarNodoConTexto(RaizFlujoAST raiz, String rol) {
-        int lineaOriginal = tokens.get(pos).getLinea();
         pos++;
 
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador.")) {
@@ -89,9 +85,7 @@ public class FlujoParser {
             recuperarPanico(); return;
         }
         pos++;
-        if (!tabla.registrar(nombre, rol)) {
-            errores.reportarError("", lineaOriginal, "Semántico Flujo", "El identificador '" + nombre + "' ya está registrado.", "Cambia el nombre para evitar colisiones.");
-        }
+        tabla.registrar(nombre, rol);
         raiz.agregarElemento(new NodoProceso(nombre, "[" + rol.toUpperCase() + "] " + texto));
     }
 
@@ -124,7 +118,7 @@ public class FlujoParser {
 
     private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
-            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
+            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : (pos > 0 ? tokens.get(pos - 1).getLinea() : 1);
             errores.reportarError(codigo, l, "Sintáctico Flujo", mensajeError, "Revisa la sintaxis del diagrama.");
             return false;
         }

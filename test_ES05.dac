@@ -1,0 +1,5 @@
+autor "Test ES05";
+version "1.0";
+// ES05: nunca se declaro 'diagrama <Tipo>;'
+// Esperado: solo ES05
+nodo Proceso "una tarea";

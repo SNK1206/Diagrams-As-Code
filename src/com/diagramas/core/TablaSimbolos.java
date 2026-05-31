@@ -13,7 +13,7 @@ public class TablaSimbolos {
     // NUEVO: El método que invoca el ParserBase
     public void bloquearContexto(String contexto) {
         this.contextoActivo = contexto;
-        System.out.println("🔒 [TABLA DE SÍMBOLOS] Contexto bloqueado exclusivamente para: " + contexto);
+        System.out.println("[TABLA] Contexto bloqueado para: " + contexto);
     }
 
     public boolean registrar(String nombre, String rol) {
@@ -21,7 +21,7 @@ public class TablaSimbolos {
             return false; // Ya existe, error semántico de duplicado
         }
         simbolos.put(nombre, rol);
-        System.out.println("📝 [TABLA] Registrado: " + nombre + " con rol [" + rol + "] en contexto [" + contextoActivo + "]");
+        System.out.println("[TABLA] Registrado: " + nombre + " -> " + rol + " [" + contextoActivo + "]");
         return true;
     }
 

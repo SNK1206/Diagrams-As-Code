@@ -31,6 +31,8 @@ public class ParserBase {
 
                     pos++;
                     if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.TEXTO_LITERAL) {
+                        String valor = tokens.get(pos).getLexema();
+                        tablaSimbolos.registrar(lexema, valor);
                         pos++;
                         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) {
                             pos++;
@@ -54,11 +56,14 @@ public class ParserBase {
 
                     if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR) {
                         String tipoDiagrama = tokens.get(pos).getLexema().toLowerCase();
+                        String tipoCapitalizado = tipoDiagrama.substring(0, 1).toUpperCase() + tipoDiagrama.substring(1);
                         pos++;
 
                         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) {
                             pos++;
-                            tablaSimbolos.bloquearContexto(tipoDiagrama.substring(0, 1).toUpperCase() + tipoDiagrama.substring(1));
+                            tablaSimbolos.registrar("diagrama", tipoCapitalizado);
+                            tablaSimbolos.registrar(tipoCapitalizado, "tipo_diagrama");
+                            tablaSimbolos.bloquearContexto(tipoCapitalizado);
                             List<Token> tokensRestantes = new ArrayList<>(tokens.subList(pos, tokens.size()));
                             delegarAlModulo(tipoDiagrama, tokensRestantes);
                             diagramaEncontrado = true;

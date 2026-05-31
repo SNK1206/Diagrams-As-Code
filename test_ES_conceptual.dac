@@ -1,0 +1,72 @@
+autor "Test ES Conceptual ES35-ES42";
+version "1.0";
+diagrama Conceptual;
+
+// Conceptos validos de referencia:
+concepto Compilador "transforma codigo fuente en ejecutable";
+concepto Lenguaje "sistema formal de reglas para escribir programas";
+
+// ============================================================
+// ES35: token inesperado (llave sola)
+// Esperado: 1 error ES35. 'concepto Codigo ...' se procesa ok.
+// ============================================================
+{
+concepto Codigo "texto escrito por el programador";
+
+// ============================================================
+// ES36: falta nombre del concepto
+// Esperado: 1 error ES36. ';' inmediato = sin cascada.
+// Anti-cascada: 'categoria Fases ...' se procesa ok.
+// ============================================================
+concepto;
+categoria Fases "etapas de la compilacion";
+
+// ============================================================
+// ES37: falta descripcion entre comillas
+// Esperado: 1 error ES37. ';' inmediato = sin cascada.
+// Anti-cascada: 'concepto Ejecucion ...' se procesa ok.
+// ============================================================
+concepto SinDescripcion;
+concepto Ejecucion "proceso de correr el programa";
+
+// ============================================================
+// ES38: falta ';' al final de la declaracion
+// Esperado: 1 error ES38. Recovery consume 'concepto Optimizacion ...'.
+// Anti-cascada: 'propiedad Velocidad ...' se procesa ok.
+// ============================================================
+propiedad Eficiencia "velocidad de procesamiento"
+concepto Optimizacion "mejora del rendimiento";
+propiedad Velocidad "rapidez del sistema";
+
+// ============================================================
+// ES39: falta destino en relacion
+// Esperado: 1 error ES39. ';' inmediato = sin cascada.
+// Anti-cascada: 'Fases agrupa Compilador;' se procesa ok.
+// ============================================================
+Compilador agrupa;
+Fases agrupa Compilador;
+
+// ============================================================
+// ES40: falta ';' al finalizar relacion
+// Esperado: 1 error ES40. Recovery consume 'Lenguaje asocia Codigo;'.
+// Anti-cascada: 'Compilador asocia Ejecucion;' se procesa ok.
+// ============================================================
+Compilador asocia Lenguaje
+Lenguaje asocia Codigo;
+Compilador asocia Ejecucion;
+
+// ============================================================
+// ES41: identificador sin verbo (siguiente token no es identificador)
+// Esperado: 1 error ES41. ';' inmediato = sin cascada.
+// Anti-cascada: 'Codigo depende Lenguaje;' se procesa ok.
+// ============================================================
+Compilador;
+Codigo depende Lenguaje;
+
+// ============================================================
+// ES42: verbo invalido ('conecta' no existe en Conceptual)
+// Esperado: 1 error ES42. Recovery consume hasta ';'.
+// Anti-cascada: 'Lenguaje depende Compilador;' se procesa ok.
+// ============================================================
+Lenguaje conecta Codigo;
+Lenguaje depende Compilador;

@@ -1,0 +1,9 @@
+// ES01: falta ; al final de autor (el parser CONTINUA despues)
+autor "Sin Punto Y Coma"
+// ES02: version sin comillas (el parser CONTINUA despues)
+version sinComillas;
+// Esperado: ES01 + ES02, luego diagrama se procesa normalmente
+// Anti-cascada: inicio y fin deben aparecer en tabla de simbolos
+diagrama Flujo;
+inicio Arranque;
+fin Termino;

@@ -1,617 +1,477 @@
 # Manual de Usuario — Diagrams As Code (DAC)
 
-**Versión:** 1.0  
+**Version:** 2.0  
 **Lenguaje fuente:** `.dac`  
-**Plataforma:** IDE Pedagógico (JavaFX) + Compilador de Consola (CLI)
+**Plataforma:** IDE Pedagogico (JavaFX)
 
 ---
 
 ## Tabla de Contenidos
 
-1. [Introducción](#1-introducción)
-2. [Arquitectura del Compilador](#2-arquitectura-del-compilador)
-3. [Uso del IDE Pedagógico (GUI)](#3-uso-del-ide-pedagógico-gui)
-4. [Uso desde la Terminal (CLI)](#4-uso-desde-la-terminal-cli)
-5. [Estructura del Lenguaje DAC](#5-estructura-del-lenguaje-dac)
-6. [Módulo: Diagramas de Flujo](#6-módulo-diagramas-de-flujo)
-7. [Módulo: Diagramas de Base de Datos](#7-módulo-diagramas-de-base-de-datos)
-8. [Módulo: Diagramas de Redes](#8-módulo-diagramas-de-redes)
-9. [Módulo: Diagramas Conceptuales](#9-módulo-diagramas-conceptuales)
-10. [Módulo: Diagramas UML](#10-módulo-diagramas-uml)
-11. [Sistema de Errores y Diagnósticos](#11-sistema-de-errores-y-diagnósticos)
-12. [Tabla de Símbolos](#12-tabla-de-símbolos)
-13. [Referencia Rápida de Sintaxis](#13-referencia-rápida-de-sintaxis)
-14. [Ejemplos Completos](#14-ejemplos-completos)
+1. [Que es Diagrams As Code](#1-que-es-diagrams-as-code)
+2. [Como ejecutar el programa](#2-como-ejecutar-el-programa)
+3. [La interfaz del IDE](#3-la-interfaz-del-ide)
+4. [Estructura basica de un archivo DAC](#4-estructura-basica-de-un-archivo-dac)
+5. [Modulo Flujo](#5-modulo-flujo)
+6. [Modulo BD (Base de Datos)](#6-modulo-bd-base-de-datos)
+7. [Modulo Redes](#7-modulo-redes)
+8. [Modulo Conceptual](#8-modulo-conceptual)
+9. [Modulo UML](#9-modulo-uml)
+10. [Sistema de errores](#10-sistema-de-errores)
+11. [Tabla de simbolos](#11-tabla-de-simbolos)
+12. [Catalogo de errores lexicos y sintacticos](#12-catalogo-de-errores-lexicos-y-sintacticos)
+13. [Ejemplos completos](#13-ejemplos-completos)
+14. [Preguntas frecuentes](#14-preguntas-frecuentes)
 
 ---
 
-## 1. Introducción
+## 1. Que es Diagrams As Code
 
-**Diagrams As Code (DAC)** es un compilador pedagógico que permite describir diagramas mediante un lenguaje textual propio con extensión `.dac`. El sistema valida el código fuente en tres fases clásicas de compilación:
+**Diagrams As Code (DAC)** es un IDE pedagogico que te permite escribir diagramas usando texto plano con un lenguaje propio (extension `.dac`). El sistema analiza tu codigo en tres fases:
 
-- **Análisis Léxico** — Descompone el código en tokens.
-- **Análisis Sintáctico** — Verifica que la estructura gramatical sea correcta y construye un AST.
-- **Análisis Semántico** — Valida la coherencia lógica (referencias existentes, unicidad de identificadores, etc.).
+1. **Analisis Lexico** — Divide el codigo en tokens (palabras, simbolos, literales).
+2. **Analisis Sintactico** — Verifica que la estructura del codigo sea correcta segun la gramatica del lenguaje.
+3. **Tabla de Simbolos** — Registra todos los identificadores declarados y sus roles.
 
-El compilador soporta cinco tipos de diagrama:
+El programa no genera una imagen del diagrama. Su proposito es educativo: mostrar como funciona un compilador real paso a paso.
 
-| Tipo de Diagrama | Palabra Clave | Módulo                              |
-|------------------|---------------|-------------------------------------|
-| Diagrama de Flujo | `Flujo`      | `com.diagramas.modulos.flujo`       |
-| Diagrama de BD    | `BD`         | `com.diagramas.modulos.bd`          |
-| Diagrama de Redes | `Redes`      | `com.diagramas.modulos.redes`       |
-| Diagrama Conceptual | `Conceptual` | `com.diagramas.modulos.conceptual` |
-| Diagrama UML      | `UML`        | `com.diagramas.modulos.uml`         |
+### Tipos de diagrama disponibles
 
----
-
-## 2. Arquitectura del Compilador
-
-El pipeline de compilación sigue este orden estricto. Si una fase falla, las siguientes no se ejecutan.
-
-```
-Archivo .dac
-     │
-     ▼
-┌─────────────┐
-│  LexerBase  │  → Tokenización del código fuente
-└──────┬──────┘
-       │  Lista<Token>
-       ▼
-┌────────────────┐
-│  ParserBase    │  → Valida la cabecera del archivo (diagrama <Tipo>;)
-└──────┬─────────┘    y delega al módulo correspondiente
-       │
-       ├──── caso "Flujo" ──► FlujoParser → RaizFlujoAST
-       │
-       └──── caso "BD"    ──► BDParser   → RaizBDAST
-                                │
-                     TablaSimbolos (Análisis Semántico)
-                     ManejadorErrores (Reporte de errores)
-```
-
-### Componentes principales
-
-| Clase | Responsabilidad |
-|-------|----------------|
-| `LexerBase` | Convierte el código fuente en una secuencia de `Token` |
-| `ParserBase` | Analiza la cabecera obligatoria y delega al módulo correcto |
-| `FlujoParser` | Parser + análisis semántico del módulo Flujo |
-| `BDParser` | Parser + análisis semántico del módulo BD |
-| `TablaSimbolos` | Registro de identificadores y sus tipos en memoria |
-| `ManejadorErrores` | Acumula y formatea todos los errores de compilación |
+| Tipo | Palabra clave | Para que sirve |
+|------|--------------|----------------|
+| Diagrama de Flujo | `Flujo` | Modelar procesos con nodos y conexiones |
+| Base de Datos | `BD` | Modelar tablas, atributos y relaciones |
+| Redes | `Redes` | Modelar topologias de red con dispositivos y enlaces |
+| Conceptual | `Conceptual` | Modelar mapas conceptuales con conceptos y relaciones |
+| UML | `UML` | Modelar diagramas de clases con clases, interfaces y relaciones |
 
 ---
 
-## 3. Uso del IDE Pedagógico (GUI)
+## 2. Como ejecutar el programa
 
-Al lanzar `MainFX`, se abre una ventana dividida en tres paneles:
+Desde la terminal (PowerShell), ubicate en la carpeta del proyecto y ejecuta:
 
-### 3.1 Barra de Herramientas
+**Compilar el proyecto:**
+```powershell
+javac --module-path "C:\Users\bobal\Desktop\openjfx-26.0.1_windows-x64_bin-sdk\javafx-sdk-26.0.1\lib" --add-modules javafx.controls,javafx.fxml -cp src -d out (Get-ChildItem -Recurse -Filter "*.java" src | Select-Object -ExpandProperty FullName)
+```
 
-| Botón | Atajo Visual | Descripción |
-|-------|-------------|-------------|
-| ➕ Nuevo | Naranja | Crea una pestaña en blanco con plantilla `diagrama Flujo;` |
-| 📂 Abrir .dac | Azul | Abre el explorador de archivos para cargar un `.dac` existente |
-| 💾 Guardar | Morado | Guarda el archivo de la pestaña activa en disco |
-| ⚡ Compilar e Inspeccionar | Verde | Ejecuta las tres fases del compilador sobre el código activo |
-
-### 3.2 Panel Central
-
-Se divide en dos columnas:
-
-**Izquierda — Editor de Código con Pestañas**
-- Cada archivo abierto ocupa su propia pestaña.
-- El editor es de fuente monoespaciada y totalmente editable.
-- Los archivos "Nuevo" sin guardar se nombran `sin_titulo_N.dac`.
-
-**Derecha — Panel de Análisis Interno**
-- **Flujo Léxico (Tokens Extracted):** Muestra todos los tokens generados por el Lexer, con tipo, lexema y número de línea.
-- **Tabla de Símbolos:** Muestra el contexto activo y todos los identificadores registrados durante el análisis semántico, junto con su tipo de rol asignado.
-
-### 3.3 Consola de Diagnóstico
-
-Panel inferior que muestra:
-- Confirmación de carga de archivo.
-- Resultado final de compilación (éxito o fallo).
-- Todos los errores detallados con línea, contexto, descripción y sugerencia de corrección.
+**Ejecutar el IDE:**
+```powershell
+java --module-path "C:\Users\bobal\Desktop\openjfx-26.0.1_windows-x64_bin-sdk\javafx-sdk-26.0.1\lib" --add-modules javafx.controls,javafx.fxml -cp out com.diagramas.MainFX
+```
 
 ---
 
-## 4. Uso desde la Terminal (CLI)
+## 3. La interfaz del IDE
 
-El compilador puede ejecutarse sin interfaz gráfica desde la clase `Main`.
+Al abrir el programa verás una ventana dividida en cuatro areas principales.
 
-### Comando
+### 3.1 Barra de herramientas (parte superior)
 
-```bash
-java com.diagramas.Main <ruta_del_archivo>.dac
+| Boton | Color | Que hace |
+|-------|-------|----------|
+| Nuevo | Naranja | Crea una pestaña nueva con plantilla `diagrama Flujo;` |
+| Abrir | Azul | Abre el explorador para cargar un archivo `.dac` existente |
+| Guardar | Morado | Guarda el archivo de la pestaña activa en disco |
+| Compilar e Inspeccionar | Verde | Ejecuta el compilador sobre el codigo de la pestaña activa |
+| Errores Lexicos | Rojo | Muestra el catalogo estatico de todos los codigos de error (EL y ES) |
+| Arbol de Derivacion | Verde azulado | Genera y muestra el arbol sintactico del codigo actual |
+| Simbologia del Lenguaje | Verde oscuro | Abre la tabla con todos los simbolos del lenguaje DAC |
+| Manual de Usuario | Azul oscuro | Abre este manual dentro del IDE |
+
+### 3.2 Panel izquierdo — Editor de codigo
+
+- Cada archivo abierto ocupa su propia **pestana** en la parte superior.
+- El editor muestra **numeros de linea** en un panel gris a la izquierda. Los numeros se actualizan automaticamente al escribir.
+- La fuente es monoespaciada para facilitar la lectura del codigo.
+- Los archivos nuevos sin guardar se llaman `sin_titulo_N.dac`.
+
+### 3.3 Panel derecho — Analisis
+
+Dividido en dos secciones:
+
+**1. Tokens**  
+Muestra todos los tokens generados por el analizador lexico, con su tipo, lexema y numero de linea. Ejemplo:
+```
+Token [IDENTIFICADOR | 'inicio' | Linea: 3]
+Token [IDENTIFICADOR | 'Arranque' | Linea: 3]
+Token [PUNTO_Y_COMA | ';' | Linea: 3]
 ```
 
-### Ejemplo
+**2. Tabla de Simbolos**  
+Muestra el contexto activo y todos los identificadores registrados durante el analisis. Ejemplo:
+```
+Contexto Bloqueado: Flujo
 
-```bash
-java com.diagramas.Main test_flujo_valido.dac
+IDENTIFICADOR ENCONTRADO  | TIPO/ROL ASIGNADO
+----------------------------------------------------
+autor                     | Mi Proyecto
+version                   | 1.0
+diagrama                  | Flujo
+Flujo                     | tipo_diagrama
+Arranque                  | inicio
+Proceso1                  | nodo
 ```
 
-### Salida esperada (compilación exitosa)
+### 3.4 Consola (parte inferior, arrastrable)
 
-```
-====== COMPILADOR DE CONSOLA: DIAGRAMS AS CODE ======
+Muestra el resultado del compilador:
+- **COMPILACION EXITOSA** si no hay errores.
+- **COMPILACION FALLIDA** con la lista completa de errores si los hay.
+- **ERRORES LEXICOS + SINTACTICOS** si hay errores en ambas fases.
 
-📖 Leyendo archivo fuente: test_flujo_valido.dac
---------------------------------------------------
-[Lexer] Análisis de caracteres completado. Tokens:
-  Token [PR_DIAGRAMA | 'diagrama' | Línea: 1]
-  Token [IDENTIFICADOR | 'Flujo' | Línea: 1]
-  ...
-🔒 [ParserBase] Contexto 'Flujo' bloqueado de manera estricta.
-...
-✅ COMPILACIÓN EXITOSA: Estructura base validada sin anomalías.
-```
-
-### Reglas de uso CLI
-
-- El archivo de entrada **debe** tener extensión `.dac`.
-- Si no se pasa ningún argumento, el programa termina con un mensaje de error pedagógico.
-- Los errores se imprimen en `System.err` y el proceso termina después de la primera fase fallida.
+La consola es un panel **arrastrable**: puedes hacer clic en el separador entre la consola y el panel principal y arrastrarlo hacia arriba para ver mas errores.
 
 ---
 
-## 5. Estructura del Lenguaje DAC
+## 4. Estructura basica de un archivo DAC
 
-### 5.1 Regla de Cabecera (Obligatoria)
-
-Todo archivo `.dac` **debe** comenzar con la declaración de cabecera. Sin ella, el compilador rechaza el archivo completo.
-
-**Sintaxis:**
+Todo archivo `.dac` debe seguir esta estructura:
 
 ```
+[meta-instrucciones opcionales]
 diagrama <TipoDiagrama>;
+[instrucciones del modulo]
 ```
 
-- `diagrama` es una **palabra reservada** del sistema (no puede usarse como identificador).
-- `<TipoDiagrama>` es un identificador que determina el módulo a usar (`Flujo` o `BD`).
-- El punto y coma `;` es **obligatorio**.
+### 4.1 Meta-instrucciones (opcionales)
 
-**Ejemplos válidos:**
+Se escriben antes de la declaracion `diagrama`. Son informacion descriptiva del archivo.
+
+```
+autor "Nombre del autor";
+version "1.0";
+```
+
+Estas instrucciones se registran en la tabla de simbolos automaticamente.
+
+**Reglas:**
+- El valor debe ir entre comillas dobles (`"`).
+- Cada instruccion termina con punto y coma (`;`).
+
+### 4.2 Declaracion de tipo de diagrama (obligatoria)
+
+Esta es la unica instruccion que el compilador exige siempre.
 
 ```
 diagrama Flujo;
 diagrama BD;
-```
-
-**Ejemplos inválidos:**
-
-```
-# ❌ Sin cabecera
-inicio MiNodo;
-
-# ❌ Sin punto y coma
-diagrama Flujo
-
-# ❌ Tipo desconocido (módulo no registrado)
 diagrama Redes;
+diagrama Conceptual;
+diagrama UML;
 ```
 
-### 5.2 Identificadores
+**Reglas:**
+- La palabra `diagrama` es una palabra reservada del sistema.
+- El tipo (`Flujo`, `BD`, etc.) es sensible a mayusculas/minusculas.
+- El punto y coma al final es obligatorio.
+- Sin esta declaracion, el compilador reporta el error ES05 y no procesa nada mas.
 
-Un identificador es cualquier secuencia de letras, dígitos y guiones bajos que **comienza con una letra o guión bajo**.
+### 4.3 Identificadores
 
-**Válidos:** `Usuarios`, `nodo1`, `Mi_Proceso`, `LeerDatos`  
-**Inválidos:** `1nodo`, `mi-proceso`, `@tabla`
+Son los nombres que das a tus elementos (nodos, tablas, clases, etc.).
 
-### 5.3 Literales de Texto
+**Reglas:**
+- Deben comenzar con una letra (`a-z`, `A-Z`) o guion bajo (`_`).
+- Pueden contener letras, digitos y guiones bajos.
+- **No** pueden comenzar con un numero.
+- **No** pueden contener caracteres especiales (`$`, `@`, `%`, etc.).
 
-Las cadenas de texto se delimitan con comillas dobles (`"`). Se usan para las descripciones de nodos.
+**Validos:** `Proceso1`, `mi_tabla`, `ClaseVehiculo`, `_temp`  
+**Invalidos:** `1proceso`, `mi-tabla`, `clase$Auto`
+
+### 4.4 Literales de texto
+
+Se usan para descripciones. Van entre comillas dobles en la misma linea.
 
 ```
-"Leer credenciales del sistema"
-"Verificar base de datos"
+nodo Validar "Verificar credenciales del usuario";
 ```
 
-**Regla:** La cadena debe cerrarse en la misma línea. Una cadena sin cerrar genera un error léxico.
+**Reglas:**
+- La comilla de cierre es obligatoria en la misma linea.
+- Una cadena sin cerrar genera el error lexico EL02.
 
-### 5.4 Signos de Puntuación Reconocidos
+### 4.5 Comentarios
 
-| Carácter | Token | Uso |
-|----------|-------|-----|
-| `;` | `PUNTO_Y_COMA` | Cierra toda instrucción |
-| `:` | `DOS_PUNTOS` | Separa nombre de tipo en atributos BD |
-| `{` | `LLAVE_IZQ` | Abre el cuerpo de una tabla BD |
-| `}` | `LLAVE_DER` | Cierra el cuerpo de una tabla BD |
+Los comentarios se escriben con `//` y el compilador los ignora completamente.
 
-### 5.5 Comentarios
+```
+// Esto es un comentario
+inicio Arranque;   // esto tambien es comentario
+```
 
-El Lexer no define un token de comentario formal. La línea `# ...` generará errores léxicos por el carácter `#`. **Evita usar comentarios en archivos `.dac`.**
+### 4.6 Compatibilidad entre modulos
+
+Si declaras `diagrama BD;` pero escribes instrucciones de otro modulo (por ejemplo, `clase MiClase {...}`), el compilador reportara errores sintacticos porque cada modulo solo reconoce su propio vocabulario.
 
 ---
 
-## 6. Módulo: Diagramas de Flujo
+## 5. Modulo Flujo
 
-Activado con `diagrama Flujo;`. Permite modelar procesos secuenciales con nodos y conexiones dirigidas.
+Activado con `diagrama Flujo;`. Modela procesos secuenciales con nodos y flechas.
 
-### 6.1 Declaración de Inicio
+### 5.1 Nodos simples
 
-Define el **punto de entrada** del flujo. Solo puede existir un punto de inicio con un nombre dado (unicidad semántica).
-
-**Sintaxis:**
+Representan puntos de inicio, fin u otros nodos sin descripcion.
 
 ```
 inicio <Identificador>;
+fin <Identificador>;
+parada <Identificador>;
 ```
 
 **Ejemplo:**
-
 ```
 inicio Comenzar;
+fin Terminar;
 ```
 
-**AST generado:** `NodoAST_Inicio [ID: Comenzar]`
+### 5.2 Nodos con descripcion
 
-**Reglas:**
-- El identificador no puede estar previamente registrado en la tabla de símbolos.
-- Termina obligatoriamente con `;`.
-
----
-
-### 6.2 Declaración de Nodo de Proceso
-
-Define un **paso o proceso** dentro del flujo. Lleva un identificador único y una descripción textual.
-
-**Sintaxis:**
+Representan pasos del proceso con un texto explicativo.
 
 ```
-nodo <Identificador> "<Descripción>";
+nodo <ID> "<descripcion>";
+condicion <ID> "<descripcion>";
+bucle <ID> "<descripcion>";
+subproceso <ID> "<descripcion>";
+entrada <ID> "<descripcion>";
+salida <ID> "<descripcion>";
 ```
 
 **Ejemplo:**
+```
+nodo LeerDatos "Leer credenciales del usuario";
+condicion Valido "El usuario es valido?";
+bucle Reintentar "Intentar de nuevo si fallo";
+```
+
+### 5.3 Conexiones
+
+Establece flechas entre dos nodos.
 
 ```
-nodo LeerDatos "Leer credenciales del sistema";
-nodo Validar "Verificar base de datos";
-```
-
-**AST generado:** `NodoAST_Proceso [ID: LeerDatos | Descripción: "Leer credenciales del sistema"]`
-
-**Reglas:**
-- El identificador debe ser único en el archivo.
-- La descripción va **entre comillas dobles** y es obligatoria.
-- Termina con `;`.
-
----
-
-### 6.3 Instrucción de Conexión
-
-Establece una **arista dirigida** entre dos nodos ya declarados.
-
-**Sintaxis:**
-
-```
-<IdentificadorOrigen> conecta <IdentificadorDestino>;
+<IDOrigen> conecta <IDDestino>;
 ```
 
 **Ejemplo:**
-
 ```
 Comenzar conecta LeerDatos;
-LeerDatos conecta Validar;
+LeerDatos conecta Valido;
 ```
 
-**AST generado:** `NodoAST_Conexion [Comenzar ──conecta──► LeerDatos]`
-
-**Reglas semánticas (críticas):**
-- Tanto el origen como el destino **deben estar previamente declarados** con `inicio` o `nodo`.
-- Una conexión hacia un identificador inexistente genera un **error semántico**, no sintáctico.
-- El verbo conector exacto es `conecta` (en minúsculas). Cualquier otro verbo genera error sintáctico.
-
-**Error típico:**
+### 5.4 Ejemplo completo Flujo
 
 ```
-# ❌ ProcesoInexistente nunca fue declarado
-Comenzar conecta ProcesoInexistente;
+autor "Login de usuario";
+version "1.0";
+diagrama Flujo;
+
+inicio Comenzar;
+nodo LeerDatos "Leer credenciales";
+condicion Valido "Las credenciales son correctas?";
+nodo Acceso "Permitir acceso al sistema";
+fin Terminar;
+
+Comenzar conecta LeerDatos;
+LeerDatos conecta Valido;
+Valido conecta Acceso;
+Acceso conecta Terminar;
 ```
 
-```
-ERROR DE COMPILACIÓN [Línea 4] [Contexto: Semántico Flujo]
-💡 Detalle: El destino 'ProcesoInexistente' no está registrado.
-🔍 Sugerencia: Verifica errores de dedo o declara el nodo de destino.
-```
+### 5.5 Errores frecuentes en Flujo
+
+| Error | Causa | Ejemplo |
+|-------|-------|---------|
+| ES07 | Falta nombre despues de `inicio` | `inicio;` |
+| ES08 | Falta `;` al final | `inicio MiNodo` |
+| ES09 | Falta descripcion entre comillas | `nodo MiNodo;` |
+| ES11 | Falta destino en `conecta` | `A conecta;` |
+| ES13 | Verbo incorrecto (usa `conecta`) | `A enlaza B;` |
 
 ---
 
-### 6.4 Gramática Completa del Módulo Flujo
+## 6. Modulo BD (Base de Datos)
 
-```
-programa_flujo  ::= cabecera instruccion_flujo*
-cabecera        ::= "diagrama" "Flujo" ";"
-instruccion_flujo ::= decl_inicio | decl_nodo | instruccion_conexion
+Activado con `diagrama BD;`. Modela esquemas de base de datos.
 
-decl_inicio     ::= "inicio" IDENTIFICADOR ";"
-decl_nodo       ::= "nodo" IDENTIFICADOR TEXTO_LITERAL ";"
-instruccion_conexion ::= IDENTIFICADOR "conecta" IDENTIFICADOR ";"
-```
-
----
-
-## 7. Módulo: Diagramas de Base de Datos
-
-Activado con `diagrama BD;`. Permite modelar esquemas de base de datos con tablas, atributos y relaciones.
-
-### 7.1 Declaración de Tabla
-
-Define una **tabla** con su nombre y la lista de sus atributos.
-
-**Sintaxis:**
+### 6.1 Tablas y bloques
 
 ```
 tabla <NombreTabla> {
-    <nombre_atributo>: <TipoDato> [Modificador];
-    ...
+    <campo> : <Tipo>;
+    <campo> : <Tipo>;
 }
+```
+
+Otras palabras clave que funcionan igual que `tabla`: `vista`, `esquema`, `paquete`.
+
+**Ejemplo:**
+```
+tabla Usuarios {
+    id : INT;
+    nombre : VARCHAR;
+    correo : VARCHAR;
+}
+```
+
+### 6.2 Componentes lineales (sin bloque)
+
+Objetos de BD que solo necesitan un nombre:
+
+```
+procedimiento <Nombre>;
+funcion <Nombre>;
+disparador <Nombre>;
+secuencia <Nombre>;
 ```
 
 **Ejemplo:**
-
 ```
-tabla Usuarios {
-    id: INT PK;
-    nombre: VARCHAR;
-    correo: VARCHAR;
-}
+procedimiento ActualizarSaldo;
+funcion CalcularImpuesto;
 ```
 
-**AST generado:**
-
-```
-NodoAST_Tabla [Usuarios]
-      ├─ id: INT <PK>
-      ├─ nombre: VARCHAR
-      └─ correo: VARCHAR
-```
-
-**Reglas:**
-- El nombre de la tabla debe ser único (control semántico).
-- El bloque debe abrirse con `{` y cerrarse con `}`.
-- Cada atributo termina con `;`.
-
----
-
-### 7.2 Definición de Atributos
-
-Cada línea dentro del bloque `{}` de una tabla define un atributo.
-
-**Sintaxis:**
-
-```
-<nombre>: <TipoDato>;
-<nombre>: <TipoDato> <Modificador>;
-```
-
-**Tipos de dato comunes (identificadores libres):**
-
-| Tipo | Descripción |
-|------|-------------|
-| `INT` | Número entero |
-| `VARCHAR` | Cadena de caracteres variable |
-| `TEXT` | Texto largo |
-| `FLOAT` | Número decimal |
-| `BOOLEAN` | Valor lógico |
-| `DATE` | Fecha |
-
-> El Lexer trata los tipos de dato como identificadores ordinarios, por lo que puedes usar cualquier identificador válido como tipo.
-
-**Modificadores opcionales:**
-
-| Modificador | Significado |
-|-------------|-------------|
-| `PK` | Llave primaria (Primary Key) |
-| `FK` | Llave foránea (Foreign Key) |
-
-**Ejemplos:**
-
-```
-id: INT PK;
-usuario_id: INT FK;
-nombre: VARCHAR;
-contenido: TEXT;
-```
-
-**Reglas:**
-- El modificador es **opcional**. Si se omite, el atributo se registra sin modificador.
-- Solo se puede declarar **un modificador** por atributo.
-
----
-
-### 7.3 Instrucción de Relación
-
-Establece una **relación semántica** entre dos tablas ya declaradas.
-
-**Sintaxis:**
+### 6.3 Relaciones
 
 ```
 <TablaOrigen> relaciona <TablaDestino>;
 ```
 
 **Ejemplo:**
-
 ```
 Usuarios relaciona Posts;
+Posts relaciona Comentarios;
 ```
 
-**AST generado:** `NodoAST_Relacion [Usuarios ──relaciona──► Posts]`
-
-**Reglas semánticas (críticas):**
-- Ambas tablas deben haber sido **declaradas previamente** en el mismo archivo.
-- El verbo conector exacto es `relaciona`. El uso de `conecta` u otro verbo genera error sintáctico.
-- Una referencia a una tabla inexistente genera un **error semántico**.
-
-**Error típico (verbo incorrecto):**
+### 6.4 Ejemplo completo BD
 
 ```
-# ❌ 'conecta' no es el verbo del módulo BD
-Usuarios conecta Posts;
+autor "Esquema de blog";
+version "1.0";
+diagrama BD;
+
+tabla Usuarios {
+    id : INT;
+    nombre : VARCHAR;
+    correo : VARCHAR;
+}
+
+tabla Posts {
+    id : INT;
+    titulo : VARCHAR;
+    contenido : TEXT;
+}
+
+tabla Comentarios {
+    id : INT;
+    texto : VARCHAR;
+}
+
+funcion ObtenerPosts;
+disparador AuditarCambios;
+
+Usuarios relaciona Posts;
+Posts relaciona Comentarios;
 ```
 
-```
-ERROR DE COMPILACIÓN [Línea 7] [Contexto: Sintáctico BD]
-💡 Detalle: Instrucción desconocida o verbo inválido en 'Usuarios'.
-🔍 Sugerencia: Para unir tablas usa el verbo exclusivo 'relaciona' (Ej: TablaA relaciona TablaB;)
-```
+### 6.5 Errores frecuentes en BD
+
+| Error | Causa |
+|-------|-------|
+| ES15 | Falta nombre de tabla: `tabla { ... }` |
+| ES16 | Falta `{` para abrir bloque: `tabla MiTabla;` |
+| ES17 | Falta nombre de atributo: `: INT;` |
+| ES18 | Falta `:` en atributo: `campo INT;` |
+| ES19 | Falta tipo de dato: `campo : ;` |
+| ES26 | Verbo incorrecto (usa `relaciona`): `A conecta B;` |
 
 ---
 
-### 7.4 Gramática Completa del Módulo BD
+## 7. Modulo Redes
 
-```
-programa_bd     ::= cabecera instruccion_bd*
-cabecera        ::= "diagrama" "BD" ";"
-instruccion_bd  ::= decl_tabla | instruccion_relacion
+Activado con `diagrama Redes;`. Modela topologias de red.
 
-decl_tabla      ::= "tabla" IDENTIFICADOR "{" atributo* "}"
-atributo        ::= IDENTIFICADOR ":" IDENTIFICADOR [IDENTIFICADOR] ";"
-instruccion_relacion ::= IDENTIFICADOR "relaciona" IDENTIFICADOR ";"
-```
-
----
-
----
-
-## 8. Módulo: Diagramas de Redes
-
-Activado con `diagrama Redes;`. Permite modelar topologías de red con dispositivos y conexiones.
-
-### 8.1 Declaración de Dispositivo
-
-Define un elemento de red con un nombre, tipo y bloque de configuración opcional.
-
-**Sintaxis:**
+### 7.1 Declaracion de dispositivos
 
 ```
 dispositivo <Nombre> <Tipo>;
-dispositivo <Nombre> <Tipo> { <config> };
+dispositivo <Nombre> <Tipo> { configuracion };
 ```
 
-**Palabras clave de rol** (equivalentes a `dispositivo`): `nube`, `vlan`, `subred`, `cluster`, `tunel`, `zona`, `puerto`, `politica`
+**Tipos comunes:** `Router`, `Switch`, `Hub`, `Firewall`, `PC`, `Servidor`
 
 **Ejemplo:**
-
 ```
-dispositivo Router1 Router;
-dispositivo Switch1 Switch { Puertos: 24 };
-nube AWS Nube { Region: us-east-1 };
+dispositivo R1 Router;
+dispositivo SW1 Switch { modelo Catalyst3750 };
+dispositivo PC1 PC;
 ```
 
-**Reglas:**
-- El nombre debe ser único.
-- El bloque `{ }` es opcional. Dentro se escribe configuración libre (no se valida su estructura).
-- Termina obligatoriamente con `;`.
-
----
-
-### 8.2 Instrucción de Enlace
-
-Establece una conexión física entre dos dispositivos.
-
-**Sintaxis:**
+### 7.2 Enlace entre dispositivos
 
 ```
 <IDOrigen> enlaza <IDDestino>;
 ```
 
 **Ejemplo:**
+```
+R1 enlaza SW1;
+SW1 enlaza PC1;
+```
+
+### 7.3 Ejemplo completo Redes
 
 ```
+autor "Red corporativa";
+version "1.0";
+diagrama Redes;
+
+dispositivo Router1 Router;
+dispositivo Switch1 Switch;
+dispositivo PC1 PC;
+dispositivo PC2 PC;
+dispositivo Servidor1 Servidor;
+
 Router1 enlaza Switch1;
 Switch1 enlaza PC1;
+Switch1 enlaza PC2;
+Switch1 enlaza Servidor1;
 ```
 
-**Reglas:**
-- El verbo conector exclusivo del módulo Redes es `enlaza`.
-- Termina con `;`.
+### 7.4 Errores frecuentes en Redes
+
+| Error | Causa |
+|-------|-------|
+| ES28 | Falta nombre del dispositivo: `dispositivo;` |
+| ES29 | Falta tipo del dispositivo: `dispositivo R1;` |
+| ES32 | Falta destino en enlaza: `R1 enlaza;` |
+| ES34 | Verbo incorrecto (usa `enlaza`): `R1 conecta R2;` |
 
 ---
 
-### 8.3 Gramática Completa del Módulo Redes
+## 8. Modulo Conceptual
+
+Activado con `diagrama Conceptual;`. Modela mapas conceptuales.
+
+### 8.1 Declaracion de nodos conceptuales
 
 ```
-programa_redes    ::= cabecera instruccion_redes*
-cabecera          ::= "diagrama" "Redes" ";"
-instruccion_redes ::= decl_dispositivo | instruccion_enlace
-
-decl_dispositivo  ::= ROL_RED IDENTIFICADOR IDENTIFICADOR ["{" config "}"] ";"
-ROL_RED           ::= "dispositivo" | "nube" | "vlan" | "subred" | "cluster"
-                    | "tunel" | "zona" | "puerto" | "politica"
-instruccion_enlace ::= IDENTIFICADOR "enlaza" IDENTIFICADOR ";"
-```
-
-### 8.4 Códigos de Error del Módulo Redes
-
-| Código | Descripción |
-|--------|-------------|
-| ES27 | Token inesperado — se esperaba un componente de red o enlace |
-| ES28 | Falta el nombre del dispositivo |
-| ES29 | Falta el tipo del dispositivo |
-| ES30 | Falta `}` para cerrar el bloque de propiedades |
-| ES31 | Falta `;` al final de la declaración del dispositivo |
-| ES32 | Falta el identificador destino en instrucción `enlaza` |
-| ES33 | Falta `;` al finalizar la instrucción `enlaza` |
-| ES34 | Verbo inválido — usa `enlaza` para redes |
-
----
-
-## 9. Módulo: Diagramas Conceptuales
-
-Activado con `diagrama Conceptual;`. Permite modelar mapas conceptuales con conceptos, categorías, propiedades y sus relaciones.
-
-### 9.1 Declaración de Nodo Conceptual
-
-Define un elemento del mapa conceptual con un nombre y una descripción textual.
-
-**Palabras clave:**
-
-| Palabra clave | Significado |
-|---------------|-------------|
-| `concepto` | Idea principal del diagrama |
-| `categoria` | Agrupación temática de conceptos |
-| `propiedad` | Característica o atributo de un concepto |
-
-**Sintaxis:**
-
-```
-concepto <ID> "<Descripción>";
-categoria <ID> "<Descripción>";
-propiedad <ID> "<Descripción>";
+concepto <ID> "<descripcion>";
+categoria <ID> "<descripcion>";
+propiedad <ID> "<descripcion>";
 ```
 
 **Ejemplo:**
-
 ```
-concepto Compilador "Programa que transforma código fuente";
-categoria Fases "Etapas del proceso de compilación";
-propiedad Eficiencia "Velocidad de procesamiento del compilador";
+concepto Compilador "Programa que transforma codigo fuente";
+categoria Fases "Etapas del proceso de compilacion";
+propiedad Eficiencia "Velocidad de procesamiento";
 ```
 
-**Reglas:**
-- El identificador debe ser único.
-- La descripción entre comillas es **obligatoria**.
-- Termina con `;`.
-
----
-
-### 9.2 Instrucción de Relación Conceptual
-
-Establece un vínculo semántico entre dos nodos del mapa.
-
-**Verbos disponibles:**
-
-| Verbo | Significado |
-|-------|-------------|
-| `agrupa` | Un concepto/categoría contiene o agrupa a otro |
-| `asocia` | Asociación general entre dos nodos |
-| `depende` | Un nodo depende de otro |
-
-**Sintaxis:**
+### 8.2 Relaciones conceptuales
 
 ```
 <IDOrigen> agrupa <IDDestino>;
@@ -619,60 +479,70 @@ Establece un vínculo semántico entre dos nodos del mapa.
 <IDOrigen> depende <IDDestino>;
 ```
 
-**Ejemplo:**
+**Verbos y su significado:**
 
+| Verbo | Significado |
+|-------|-------------|
+| `agrupa` | Un concepto contiene o agrupa a otro |
+| `asocia` | Asociacion general entre dos conceptos |
+| `depende` | Un concepto depende de otro para existir |
+
+**Ejemplo:**
 ```
 Fases agrupa Lexico;
 Compilador asocia Eficiencia;
 Sintactico depende Lexico;
 ```
 
----
-
-### 9.3 Gramática Completa del Módulo Conceptual
+### 8.3 Ejemplo completo Conceptual
 
 ```
-programa_conceptual   ::= cabecera instruccion_conceptual*
-cabecera              ::= "diagrama" "Conceptual" ";"
-instruccion_conceptual ::= decl_nodo | instruccion_relacion
+autor "Teoria de compiladores";
+version "1.0";
+diagrama Conceptual;
 
-decl_nodo     ::= ("concepto" | "categoria" | "propiedad") IDENTIFICADOR TEXTO_LITERAL ";"
-instruccion_relacion ::= IDENTIFICADOR ("agrupa" | "asocia" | "depende") IDENTIFICADOR ";"
+concepto Compilador "Transforma codigo fuente en ejecutable";
+categoria Fases "Las tres fases principales";
+concepto Lexico "Analiza caracteres y genera tokens";
+concepto Sintactico "Verifica la estructura gramatical";
+concepto Semantico "Valida la coherencia logica";
+propiedad Eficiencia "Rapidez del proceso de compilacion";
+
+Fases agrupa Lexico;
+Fases agrupa Sintactico;
+Fases agrupa Semantico;
+Compilador asocia Eficiencia;
+Sintactico depende Lexico;
+Semantico depende Sintactico;
 ```
 
-### 9.4 Códigos de Error del Módulo Conceptual
+### 8.4 Errores frecuentes en Conceptual
 
-| Código | Descripción |
-|--------|-------------|
-| ES35 | Token inesperado — se esperaba un componente conceptual o relación |
-| ES36 | Falta el nombre del concepto, categoría o propiedad |
-| ES37 | Falta la descripción entre comillas |
-| ES38 | Falta `;` al final de la declaración |
-| ES39 | Falta el identificador destino en la relación |
-| ES40 | Falta `;` al finalizar la relación |
-| ES42 | Verbo inválido — usa `agrupa`, `asocia` o `depende` |
+| Error | Causa |
+|-------|-------|
+| ES36 | Falta nombre: `concepto;` |
+| ES37 | Falta descripcion: `concepto MiConcepto;` |
+| ES39 | Falta destino: `A agrupa;` |
+| ES42 | Verbo incorrecto: `A conecta B;` |
 
 ---
 
-## 10. Módulo: Diagramas UML
+## 9. Modulo UML
 
-Activado con `diagrama UML;`. Permite modelar diagramas de clases UML con clases, interfaces, enumeraciones, miembros y relaciones.
+Activado con `diagrama UML;`. Modela diagramas de clases UML.
 
-### 10.1 Declaración de Clase
-
-Define una clase con sus atributos y métodos.
-
-**Sintaxis:**
+### 9.1 Declaracion de clases
 
 ```
 clase <NombreClase> {
     atributo <nombre> : <Tipo>;
-    metodo <nombre> : <Tipo>;
+    metodo <nombre> : <TipoRetorno>;
 }
 ```
 
-**Ejemplo:**
+**Tipos comunes:** `INT`, `STRING`, `BOOLEAN`, `VOID`, `FLOAT`, `DOUBLE`
 
+**Ejemplo:**
 ```
 clase Vehiculo {
     atributo velocidad : INT;
@@ -682,19 +552,9 @@ clase Vehiculo {
 }
 ```
 
-**Reglas:**
-- El nombre de la clase debe ser único.
-- El bloque `{ }` es obligatorio (puede estar vacío).
-- Cada miembro lleva la palabra clave `atributo` o `metodo`, nombre, `:` y tipo.
-- Cada miembro termina con `;`.
+### 9.2 Interfaces y enumeraciones
 
----
-
-### 10.2 Declaración de Interfaz y Enumeración
-
-Componentes lineales sin cuerpo de miembros.
-
-**Sintaxis:**
+Son componentes sin bloque de miembros:
 
 ```
 interfaz <ID>;
@@ -702,27 +562,13 @@ enum <ID>;
 ```
 
 **Ejemplo:**
-
 ```
 interfaz Serializable;
-enum EstadoPedido;
+interfaz Comparable;
+enum EstadoMotor;
 ```
 
----
-
-### 10.3 Instrucciones de Relación UML
-
-Establece relaciones estructurales entre elementos del diagrama.
-
-**Verbos disponibles:**
-
-| Verbo | Significado UML |
-|-------|-----------------|
-| `extiende` | Herencia de clase (`extends`) |
-| `implementa` | Implementación de interfaz (`implements`) |
-| `usa` | Dependencia o uso entre clases |
-
-**Sintaxis:**
+### 9.3 Relaciones UML
 
 ```
 <IDOrigen> extiende <IDDestino>;
@@ -730,391 +576,24 @@ Establece relaciones estructurales entre elementos del diagrama.
 <IDOrigen> usa <IDDestino>;
 ```
 
-**Ejemplo:**
+| Verbo | Equivalente UML |
+|-------|-----------------|
+| `extiende` | Herencia (`extends`) |
+| `implementa` | Implementacion de interfaz (`implements`) |
+| `usa` | Dependencia o uso |
 
+**Ejemplo:**
 ```
 Auto extiende Vehiculo;
 Auto implementa Serializable;
 Motor usa Combustible;
 ```
 
----
-
-### 10.4 Gramática Completa del Módulo UML
+### 9.4 Ejemplo completo UML
 
 ```
-programa_uml      ::= cabecera instruccion_uml*
-cabecera          ::= "diagrama" "UML" ";"
-instruccion_uml   ::= decl_clase | decl_lineal | instruccion_relacion
-
-decl_clase        ::= "clase" IDENTIFICADOR "{" miembro* "}"
-miembro           ::= ("atributo" | "metodo") IDENTIFICADOR ":" IDENTIFICADOR ";"
-decl_lineal       ::= ("interfaz" | "enum") IDENTIFICADOR ";"
-instruccion_relacion ::= IDENTIFICADOR ("extiende" | "implementa" | "usa") IDENTIFICADOR ";"
-```
-
-### 10.5 Códigos de Error del Módulo UML
-
-| Código | Descripción |
-|--------|-------------|
-| ES43 | Token inesperado — se esperaba `clase`, `interfaz`, `enum` o una relación |
-| ES44 | Falta el nombre de la clase, interfaz o enum |
-| ES45 | Falta `{` para abrir el cuerpo de la clase |
-| ES46 | Se esperaba `atributo` o `metodo` dentro de la clase |
-| ES47 | Falta el nombre del miembro |
-| ES48 | Falta `:` en la definición del miembro |
-| ES49 | Falta el tipo del miembro |
-| ES50 | Falta `;` al final del miembro o componente lineal |
-| ES51 | Falta `}` para cerrar la clase |
-| ES52 | Falta el identificador destino en la relación |
-| ES53 | Falta `;` al finalizar la relación |
-| ES54 | Verbo inválido — usa `extiende`, `implementa` o `usa` |
-
----
-
-## 11. Sistema de Errores y Diagnósticos
-
-El `ManejadorErrores` acumula todos los errores encontrados durante las tres fases. Cada error sigue el formato:
-
-```
-==================================================
-❌ ERROR DE COMPILACIÓN [Línea N] [Contexto: <fase>]
-💡 Detalle: <descripción del problema>
-🔍 Sugerencia: <indicación de corrección>
-==================================================
-```
-
-### 8.1 Contextos de Error
-
-| Contexto | Fase | Qué detecta |
-|----------|------|-------------|
-| `Análisis Léxico` | Léxica | Caracteres no permitidos en el alfabeto del lenguaje |
-| `Léxico` | Léxica | Cadenas sin cerrar |
-| `Parser Base` | Sintáctica | Cabecera ausente o malformada |
-| `Sintáctico Flujo` | Sintáctica | Estructura incorrecta en el módulo Flujo |
-| `Semántico Flujo` | Semántica | Identificadores duplicados o referencias no declaradas (Flujo) |
-| `Sintáctico BD` | Sintáctica | Estructura incorrecta en el módulo BD |
-| `Semántico BD` | Semántica | Tablas duplicadas o referencias no declaradas (BD) |
-| `Infraestructura` | — | Tipo de diagrama no registrado en el sistema |
-
-### 8.2 Comportamiento de Detención
-
-El compilador **detiene el pipeline** si detecta errores en una fase antes de pasar a la siguiente:
-
-- Errores léxicos → se detiene antes del análisis sintáctico.
-- Errores sintácticos/semánticos → se acumulan y se reportan al final.
-
-Dentro del análisis sintáctico, el parser utiliza **recuperación de pánico** para sincronizar tras un error y seguir reportando errores subsecuentes sin "encadenar" falsas alarmas.
-
-### 8.3 Errores Léxicos Comunes
-
-| Causa | Ejemplo | Error generado |
-|-------|---------|---------------|
-| Carácter no permitido | `#`, `@`, `!` | `El carácter '#' no pertenece al alfabeto del lenguaje.` |
-| Cadena sin cerrar | `"texto sin cerrar` | `Cadena de texto sin cerrar.` |
-| Número como primer carácter | `1nodo` | El `1` genera error léxico; `nodo` se tokeniza como IDENTIFICADOR. |
-
----
-
-## 12. Tabla de Símbolos
-
-La `TablaSimbolos` es el componente de memoria del compilador. Se reinicia en cada compilación.
-
-### Comportamiento
-
-- Registra cada identificador declarado con su **tipo de rol** (`inicio`, `nodo`, `tabla`).
-- Valida **unicidad**: si un identificador ya fue registrado, retorna `false` y el parser emite error semántico.
-- Mantiene el **contexto activo** (el tipo de diagrama en proceso).
-
-### Visualización en el IDE
-
-En el panel derecho del IDE, la tabla se muestra así:
-
-```
-🔒 Contexto Bloqueado: Flujo
-
-IDENTIFICADOR ENCONTRADO  | TIPO/ROL ASIGNADO
-----------------------------------------------------
-Comenzar                  | inicio
-LeerDatos                 | nodo
-Validar                   | nodo
-```
-
-### Roles registrados
-
-| Rol | Registrado por | Módulo |
-|-----|---------------|--------|
-| `inicio` | `procesarInicio()` | Flujo |
-| `nodo` | `procesarNodoProceso()` | Flujo |
-| `tabla` | `procesarTabla()` | BD |
-
-> Las **conexiones** (`conecta`) y **relaciones** (`relaciona`) **no registran** nuevos identificadores; solo validan que los referenciados ya existan.
-
----
-
-## 13. Referencia Rápida de Sintaxis
-
-### Módulo Flujo
-
-```
-diagrama Flujo;
-
-inicio <ID>;
-nodo <ID> "<descripción>";
-<IDOrigen> conecta <IDDestino>;
-```
-
-### Módulo BD
-
-```
-diagrama BD;
-
-tabla <NombreTabla> {
-    <campo>: <Tipo>;
-    <campo>: <Tipo> PK;
-    <campo>: <Tipo> FK;
-}
-
-<TablaOrigen> relaciona <TablaDestino>;
-```
-
-### Módulo Redes
-
-```
-diagrama Redes;
-
-dispositivo <Nombre> <Tipo>;
-dispositivo <Nombre> <Tipo> { config };
-nube <Nombre> <Tipo>;
-vlan <Nombre> <Tipo>;
-<IDOrigen> enlaza <IDDestino>;
-```
-
-### Módulo Conceptual
-
-```
-diagrama Conceptual;
-
-concepto <ID> "<descripción>";
-categoria <ID> "<descripción>";
-propiedad <ID> "<descripción>";
-<IDOrigen> agrupa <IDDestino>;
-<IDOrigen> asocia <IDDestino>;
-<IDOrigen> depende <IDDestino>;
-```
-
-### Módulo UML
-
-```
-diagrama UML;
-
-clase <NombreClase> {
-    atributo <nombre> : <Tipo>;
-    metodo <nombre> : <Tipo>;
-}
-interfaz <ID>;
-enum <ID>;
-<IDOrigen> extiende <IDDestino>;
-<IDOrigen> implementa <IDDestino>;
-<IDOrigen> usa <IDDestino>;
-```
-
-### Palabras reservadas del sistema
-
-| Palabra | Tipo Token | Contexto |
-|---------|-----------|----------|
-| `diagrama` | `PR_DIAGRAMA` | Global (cabecera) |
-| `inicio` | `IDENTIFICADOR` (semántico) | Flujo |
-| `nodo` | `IDENTIFICADOR` (semántico) | Flujo |
-| `conecta` | `IDENTIFICADOR` (semántico) | Flujo |
-| `tabla` | `IDENTIFICADOR` (semántico) | BD |
-| `relaciona` | `IDENTIFICADOR` (semántico) | BD |
-| `dispositivo` | `IDENTIFICADOR` (semántico) | Redes |
-| `enlaza` | `IDENTIFICADOR` (semántico) | Redes |
-| `concepto` | `IDENTIFICADOR` (semántico) | Conceptual |
-| `categoria` | `IDENTIFICADOR` (semántico) | Conceptual |
-| `propiedad` | `IDENTIFICADOR` (semántico) | Conceptual |
-| `agrupa` | `IDENTIFICADOR` (semántico) | Conceptual |
-| `asocia` | `IDENTIFICADOR` (semántico) | Conceptual |
-| `depende` | `IDENTIFICADOR` (semántico) | Conceptual |
-| `clase` | `IDENTIFICADOR` (semántico) | UML |
-| `interfaz` | `IDENTIFICADOR` (semántico) | UML |
-| `enum` | `IDENTIFICADOR` (semántico) | UML |
-| `atributo` | `IDENTIFICADOR` (semántico) | UML |
-| `metodo` | `IDENTIFICADOR` (semántico) | UML |
-| `extiende` | `IDENTIFICADOR` (semántico) | UML |
-| `implementa` | `IDENTIFICADOR` (semántico) | UML |
-| `usa` | `IDENTIFICADOR` (semántico) | UML |
-
-> Nota: Solo `diagrama` tiene su propio tipo de token (`PR_DIAGRAMA`). El resto son identificadores que el parser reconoce por su lexema en posiciones específicas de la gramática.
-
----
-
-## 14. Ejemplos Completos
-
-### Ejemplo 1: Diagrama de Flujo válido
-
-**Archivo:** `test_flujo_valido.dac`
-
-```
-diagrama Flujo;
-inicio Comenzar;
-nodo LeerDatos "Leer credenciales";
-nodo Validar "Verificar base de datos";
-Comenzar conecta LeerDatos;
-LeerDatos conecta Validar;
-```
-
-**AST generado:**
-
-```
-==================================================
-🌳 ÁRBOL DE SINTAXIS ABSTRACTA (AST) GENERADO:
-==================================================
-  NodoAST_Inicio [ID: Comenzar]
-  NodoAST_Proceso [ID: LeerDatos | Descripción: "Leer credenciales"]
-  NodoAST_Proceso [ID: Validar | Descripción: "Verificar base de datos"]
-  NodoAST_Conexion [Comenzar ──conecta──► LeerDatos]
-  NodoAST_Conexion [LeerDatos ──conecta──► Validar]
-==================================================
-```
-
----
-
-### Ejemplo 2: Diagrama de Flujo con error semántico
-
-**Archivo:** `test_flujo_error.dac`
-
-```
-diagrama Flujo;
-inicio Comenzar;
-nodo LeerDatos "Leer credenciales";
-Comenzar conecta ProcesoInexistente;
-```
-
-**Error generado:**
-
-```
-==================================================
-❌ ERROR DE COMPILACIÓN [Línea 4] [Contexto: Semántico Flujo]
-💡 Detalle: El destino 'ProcesoInexistente' no está registrado.
-🔍 Sugerencia: Verifica errores de dedo o declara el nodo de destino.
-==================================================
-```
-
----
-
-### Ejemplo 3: Diagrama de Base de Datos válido
-
-**Archivo:** `test_bd_valido.dac`
-
-```
-diagrama BD;
-tabla Usuarios {
-    id: INT PK;
-    nombre: VARCHAR;
-    correo: VARCHAR;
-}
-tabla Posts {
-    id: INT PK;
-    usuario_id: INT FK;
-    contenido: TEXT;
-}
-Usuarios relaciona Posts;
-```
-
-**AST generado:**
-
-```
-==================================================
-🗄️ ÁRBOL DE SINTAXIS ABSTRACTA (AST) - BASE DE DATOS:
-==================================================
-  NodoAST_Tabla [Usuarios]
-      ├─ id: INT <PK>
-      ├─ nombre: VARCHAR
-      └─ correo: VARCHAR
-
-  NodoAST_Tabla [Posts]
-      ├─ id: INT <PK>
-      ├─ usuario_id: INT <FK>
-      └─ contenido: TEXT
-
-  NodoAST_Relacion [Usuarios ──relaciona──► Posts]
-==================================================
-```
-
----
-
-### Ejemplo 4: Diagrama BD con error sintáctico (verbo incorrecto)
-
-**Archivo:** `test_bd_error.dac`
-
-```
-diagrama BD;
-tabla Usuarios {
-    id: INT PK;
-    nombre: VARCHAR;
-}
-Usuarios conecta Posts;
-```
-
-**Error generado:**
-
-```
-==================================================
-❌ ERROR DE COMPILACIÓN [Línea 7] [Contexto: Sintáctico BD]
-💡 Detalle: Instrucción desconocida o verbo inválido en 'Usuarios'.
-🔍 Sugerencia: Para unir tablas usa el verbo exclusivo 'relaciona' (Ej: TablaA relaciona TablaB;)
-==================================================
-```
-
----
-
-### Ejemplo 5: Diagrama de Redes válido
-
-**Archivo:** `test_redes_valido.dac`
-
-```
-diagrama Redes;
-
-dispositivo Router1 Router;
-dispositivo Switch1 Switch { Puertos: 24 };
-nube AWS Nube { Region: us-east-1 };
-dispositivo PC1 Computadora;
-
-Router1 enlaza Switch1;
-Switch1 enlaza PC1;
-AWS enlaza Router1;
-```
-
----
-
-### Ejemplo 6: Diagrama Conceptual válido
-
-**Archivo:** `test_conceptual_valido.dac`
-
-```
-diagrama Conceptual;
-
-concepto Compilador "Programa que transforma código fuente en código ejecutable";
-categoria Fases "Etapas del proceso de compilación";
-propiedad Eficiencia "Capacidad de procesar código con rapidez";
-concepto Lexico "Primera fase: análisis de caracteres";
-concepto Sintactico "Segunda fase: análisis de estructura gramatical";
-
-Fases agrupa Lexico;
-Fases agrupa Sintactico;
-Compilador asocia Eficiencia;
-Sintactico depende Lexico;
-```
-
----
-
-### Ejemplo 7: Diagrama UML válido
-
-**Archivo:** `test_uml_valido.dac`
-
-```
+autor "Diagrama de vehiculos";
+version "1.0";
 diagrama UML;
 
 clase Vehiculo {
@@ -1129,38 +608,388 @@ clase Auto {
     metodo abrirCofre : VOID;
 }
 
+clase Camion {
+    atributo carga : FLOAT;
+    metodo cargar : VOID;
+}
+
 interfaz Serializable;
+interfaz Conducible;
 enum EstadoMotor;
 
 Auto extiende Vehiculo;
+Camion extiende Vehiculo;
 Auto implementa Serializable;
+Auto implementa Conducible;
 Auto usa EstadoMotor;
 ```
 
+### 9.5 Errores frecuentes en UML
+
+| Error | Causa |
+|-------|-------|
+| ES44 | Falta nombre de clase o interfaz: `clase { ... }` |
+| ES45 | Falta `{` para abrir clase: `clase Auto;` |
+| ES46 | Keyword incorrecto dentro de clase (solo `atributo` o `metodo`) |
+| ES47 | Falta nombre del miembro: `atributo : INT;` |
+| ES48 | Falta `:` en miembro: `atributo velocidad INT;` |
+| ES49 | Falta tipo del miembro: `atributo velocidad : ;` |
+| ES54 | Verbo incorrecto (usa `extiende`, `implementa` o `usa`) |
+
 ---
 
-### Ejemplo 8: Diagrama UML con errores sintácticos
+## 10. Sistema de errores
 
-**Archivo:** `test_uml_error.dac`
+El compilador clasifica los errores en dos categorias y los muestra en la consola con este formato:
 
 ```
+==================================================
+[ERROR] [EL01] LEXICO [Linea 6]
+Detalle: El caracter '%' no pertenece al alfabeto del lenguaje.
+Consejo: Elimina el caracter o verifica si querias escribir un identificador.
+==================================================
+```
+
+### 10.1 Comportamiento del compilador ante errores
+
+- **Errores lexicos (EL):** El lexer reporta el error pero el parser **sigue ejecutandose** para mostrar mas informacion. Los simbolos validos que logre registrar apareceran en la tabla de simbolos.
+- **Errores de cabecera (ES01-ES05):** Si la declaracion `diagrama` es incorrecta, el modulo parser **no corre** y la tabla de simbolos solo muestra `autor` y `version`.
+- **Errores de modulo (ES06-ES54):** Las instrucciones con error se saltan y las instrucciones validas siguientes **si se procesan** (anti-cascada). Los simbolos validos aparecen en la tabla.
+
+### 10.2 Recuperacion de panico (anti-cascada)
+
+Cuando el parser encuentra un error en una instruccion, avanza automaticamente hasta el siguiente `;` o `}` y continua con la siguiente instruccion. Esto evita que un solo error genere docenas de errores falsos.
+
+**Ejemplo:** Si tienes 10 instrucciones y la primera tiene un error, el compilador reporta **1 error** para esa instruccion y luego procesa correctamente las 9 restantes.
+
+---
+
+## 11. Tabla de simbolos
+
+La tabla de simbolos registra todos los identificadores declarados durante el analisis. Se muestra en el panel derecho del IDE.
+
+### Que aparece en la tabla
+
+| Identificador | Tipo/Rol | Cuando se registra |
+|--------------|----------|--------------------|
+| `autor` | Valor del autor | Al procesar `autor "...";` |
+| `version` | Valor de la version | Al procesar `version "...";` |
+| `diagrama` | Tipo de diagrama | Al procesar `diagrama Flujo;` |
+| `Flujo` (o el tipo) | `tipo_diagrama` | Al procesar `diagrama Flujo;` |
+| Nombre de nodo | `inicio`, `fin`, `nodo`, etc. | Al procesar cada instruccion valida |
+| Nombre de tabla | `tabla`, `vista`, etc. | Al procesar cada bloque valido |
+| Nombre de clase | `clase` | Al procesar cada clase valida |
+
+### Que NO aparece en la tabla
+
+- Conexiones (`conecta`, `enlaza`, `relaciona`) — no declaran nuevos identificadores.
+- Instrucciones con error — si una instruccion falla, su identificador no se registra.
+
+---
+
+## 12. Catalogo de errores lexicos y sintacticos
+
+### Errores Lexicos (EL)
+
+| Codigo | Descripcion | Ejemplo que lo genera |
+|--------|-------------|----------------------|
+| EL01 | Caracter no valido en el alfabeto DAC | `inicio Nodo %;` |
+| EL02 | Cadena de texto sin cerrar | `nodo A "sin cerrar` |
+| EL03 | Identificador que comienza con digito | `3inicio` |
+| EL04 | Caracter invalido dentro de un identificador | `mi$nodo` |
+
+### Errores Sintacticos — Cabecera (ES01-ES05)
+
+| Codigo | Descripcion |
+|--------|-------------|
+| ES01 | Falta `;` al final de meta-instruccion (`autor`, `version`) |
+| ES02 | Falta texto entre comillas en meta-instruccion |
+| ES03 | Falta `;` en la declaracion `diagrama <Tipo>` |
+| ES04 | Falta el tipo de diagrama despues de `diagrama` |
+| ES05 | No se encontro la declaracion `diagrama <Tipo>;` |
+
+### Errores Sintacticos — Modulo Flujo (ES06-ES13)
+
+| Codigo | Descripcion |
+|--------|-------------|
+| ES06 | Token inesperado (no es una instruccion valida de Flujo) |
+| ES07 | Falta el nombre del nodo despues de la palabra clave |
+| ES08 | Falta `;` al final de nodo simple |
+| ES09 | Falta descripcion entre comillas en nodo con texto |
+| ES10 | Falta `;` al final de nodo con descripcion |
+| ES11 | Falta el identificador destino en instruccion `conecta` |
+| ES12 | Falta `;` al finalizar instruccion de conexion |
+| ES13 | Verbo invalido en Flujo (usa exclusivamente `conecta`) |
+
+### Errores Sintacticos — Modulo BD (ES14-ES26)
+
+| Codigo | Descripcion |
+|--------|-------------|
+| ES14 | Token inesperado (no es una instruccion valida de BD) |
+| ES15 | Falta el nombre de la tabla o bloque |
+| ES16 | Falta `{` para abrir el bloque de atributos |
+| ES17 | Falta el nombre del atributo dentro del bloque |
+| ES18 | Falta `:` en la definicion del atributo |
+| ES19 | Falta el tipo de dato del atributo |
+| ES20 | Falta `;` al final del atributo |
+| ES21 | Falta `}` para cerrar el bloque (se detecta al llegar a EOF) |
+| ES22 | Falta el nombre del componente lineal |
+| ES23 | Falta `;` al final del componente lineal |
+| ES24 | Falta el identificador destino en instruccion `relaciona` |
+| ES25 | Falta `;` al finalizar instruccion de relacion |
+| ES26 | Verbo invalido en BD (usa exclusivamente `relaciona`) |
+
+### Errores Sintacticos — Modulo Redes (ES27-ES34)
+
+| Codigo | Descripcion |
+|--------|-------------|
+| ES27 | Token inesperado (no es una instruccion valida de Redes) |
+| ES28 | Falta el nombre del dispositivo |
+| ES29 | Falta el tipo del dispositivo |
+| ES30 | Falta `}` para cerrar bloque de configuracion (se detecta al llegar a EOF) |
+| ES31 | Falta `;` al final de la declaracion del dispositivo |
+| ES32 | Falta el identificador destino en instruccion `enlaza` |
+| ES33 | Falta `;` al finalizar instruccion de enlace |
+| ES34 | Verbo invalido en Redes (usa exclusivamente `enlaza`) |
+
+### Errores Sintacticos — Modulo Conceptual (ES35-ES42)
+
+| Codigo | Descripcion |
+|--------|-------------|
+| ES35 | Token inesperado (no es una instruccion valida de Conceptual) |
+| ES36 | Falta el nombre del concepto, categoria o propiedad |
+| ES37 | Falta la descripcion entre comillas |
+| ES38 | Falta `;` al final de la declaracion |
+| ES39 | Falta el identificador destino en la relacion conceptual |
+| ES40 | Falta `;` al finalizar la relacion conceptual |
+| ES41 | Identificador sin verbo de relacion (el siguiente token no es un verbo) |
+| ES42 | Verbo invalido en Conceptual (usa `agrupa`, `asocia` o `depende`) |
+
+### Errores Sintacticos — Modulo UML (ES43-ES54)
+
+| Codigo | Descripcion |
+|--------|-------------|
+| ES43 | Token inesperado (no es una instruccion valida de UML) |
+| ES44 | Falta el nombre de la clase, interfaz o enum |
+| ES45 | Falta `{` para abrir el cuerpo de la clase |
+| ES46 | Keyword invalido dentro de clase (solo se permite `atributo` o `metodo`) |
+| ES47 | Falta el nombre del miembro (atributo o metodo) |
+| ES48 | Falta `:` en la definicion del miembro |
+| ES49 | Falta el tipo del miembro |
+| ES50 | Falta `;` al final del miembro o componente lineal |
+| ES51 | Falta `}` para cerrar la clase (se detecta al llegar a EOF) |
+| ES52 | Falta el identificador destino en la relacion UML |
+| ES53 | Falta `;` al finalizar la relacion UML |
+| ES54 | Verbo invalido en UML (usa `extiende`, `implementa` o `usa`) |
+
+---
+
+## 13. Ejemplos completos
+
+### Ejemplo 1 — Flujo de inicio de sesion
+
+```
+autor "Sistema de Login";
+version "1.0";
+diagrama Flujo;
+
+inicio Comenzar;
+nodo LeerCredenciales "Solicitar usuario y contrasena";
+condicion CredencialesValidas "Son correctas las credenciales?";
+nodo PermitirAcceso "Abrir sesion del usuario";
+nodo MostrarError "Mostrar mensaje de error";
+fin FinSesion;
+
+Comenzar conecta LeerCredenciales;
+LeerCredenciales conecta CredencialesValidas;
+CredencialesValidas conecta PermitirAcceso;
+CredencialesValidas conecta MostrarError;
+PermitirAcceso conecta FinSesion;
+MostrarError conecta FinSesion;
+```
+
+---
+
+### Ejemplo 2 — Base de datos de tienda
+
+```
+autor "Tienda en linea";
+version "2.0";
+diagrama BD;
+
+tabla Clientes {
+    id : INT;
+    nombre : VARCHAR;
+    correo : VARCHAR;
+}
+
+tabla Productos {
+    id : INT;
+    nombre : VARCHAR;
+    precio : FLOAT;
+    stock : INT;
+}
+
+tabla Pedidos {
+    id : INT;
+    fecha : DATE;
+    total : FLOAT;
+}
+
+tabla DetallesPedido {
+    id : INT;
+    cantidad : INT;
+}
+
+procedimiento GenerarFactura;
+funcion CalcularTotal;
+
+Clientes relaciona Pedidos;
+Pedidos relaciona DetallesPedido;
+DetallesPedido relaciona Productos;
+```
+
+---
+
+### Ejemplo 3 — Red de oficina
+
+```
+autor "Infraestructura oficina";
+version "1.0";
+diagrama Redes;
+
+dispositivo RouterPrincipal Router;
+dispositivo Switch1 Switch { puertos 24 };
+dispositivo Switch2 Switch { puertos 24 };
+dispositivo ServidorWeb Servidor;
+dispositivo ServidorBD Servidor;
+dispositivo PC1 PC;
+dispositivo PC2 PC;
+dispositivo PC3 PC;
+dispositivo Impresora Impresora;
+
+RouterPrincipal enlaza Switch1;
+RouterPrincipal enlaza Switch2;
+Switch1 enlaza ServidorWeb;
+Switch1 enlaza ServidorBD;
+Switch2 enlaza PC1;
+Switch2 enlaza PC2;
+Switch2 enlaza PC3;
+Switch2 enlaza Impresora;
+```
+
+---
+
+### Ejemplo 4 — Mapa conceptual de compiladores
+
+```
+autor "Teoria de compiladores";
+version "1.0";
+diagrama Conceptual;
+
+concepto Compilador "Programa que transforma codigo fuente en codigo ejecutable";
+categoria FasesCompilacion "Las etapas principales del proceso de compilacion";
+concepto AnálisisLexico "Lee caracteres y produce tokens";
+concepto AnalisisSintactico "Verifica la estructura gramatical";
+concepto AnalisisSemantico "Valida la coherencia logica del codigo";
+propiedad Eficiencia "Velocidad y calidad del proceso";
+concepto Token "Unidad minima del lenguaje";
+concepto AST "Arbol de Sintaxis Abstracta";
+
+FasesCompilacion agrupa AnálisisLexico;
+FasesCompilacion agrupa AnalisisSintactico;
+FasesCompilacion agrupa AnalisisSemantico;
+Compilador asocia FasesCompilacion;
+Compilador asocia Eficiencia;
+AnálisisLexico asocia Token;
+AnalisisSintactico asocia AST;
+AnalisisSintactico depende AnálisisLexico;
+AnalisisSemantico depende AnalisisSintactico;
+```
+
+---
+
+### Ejemplo 5 — Diagrama de clases UML
+
+```
+autor "Sistema de vehiculos";
+version "1.0";
 diagrama UML;
 
-clase Motor {
-    velocidad : INT;
+clase Vehiculo {
+    atributo velocidadMaxima : INT;
+    atributo marca : STRING;
+    atributo modelo : STRING;
+    metodo acelerar : VOID;
+    metodo frenar : VOID;
+    metodo obtenerInfo : STRING;
 }
-```
 
-**Error generado:**
+clase Auto {
+    atributo numeroPuertas : INT;
+    atributo tieneAireAcondicionado : BOOLEAN;
+    metodo abrirMaletero : VOID;
+}
 
-```
-==================================================
-❌ [ES46] ERROR SINTÁCTICO [Línea 4]
-💡 Detalle: Se esperaba 'atributo' o 'metodo' dentro de la clase.
-🔍 Consejo: Define miembros como: 'atributo velocidad : INT;' o 'metodo acelerar : VOID;'.
-==================================================
+clase Camion {
+    atributo capacidadCarga : FLOAT;
+    atributo ejes : INT;
+    metodo cargar : VOID;
+    metodo descargar : VOID;
+}
+
+clase Motor {
+    atributo cilindros : INT;
+    atributo potencia : INT;
+    metodo encender : BOOLEAN;
+    metodo apagar : VOID;
+}
+
+interfaz Serializable;
+interfaz Mantenible;
+enum EstadoMotor;
+enum TipoCombustible;
+
+Auto extiende Vehiculo;
+Camion extiende Vehiculo;
+Auto implementa Serializable;
+Auto implementa Mantenible;
+Camion implementa Mantenible;
+Auto usa Motor;
+Camion usa Motor;
+Motor usa EstadoMotor;
+Motor usa TipoCombustible;
 ```
 
 ---
 
-*Manual generado para el proyecto Diagrams As Code — compilador pedagógico de análisis léxico, sintáctico y semántico.*
+## 14. Preguntas frecuentes
+
+**P: El compilador dice "COMPILACION EXITOSA" pero no veo imagen del diagrama. Es normal?**  
+R: Si. El proposito del IDE es pedagogico: muestra el proceso de compilacion (tokens, tabla de simbolos, errores), no genera imagenes. La salida esperada son los tokens y la tabla de simbolos.
+
+**P: Por que algunos simbolos no aparecen en la tabla de simbolos?**  
+R: Solo se registran los identificadores de nodos, tablas, clases, etc. Las conexiones (`conecta`, `enlaza`, `relaciona`) no registran identificadores porque no declaran elementos nuevos.
+
+**P: Tengo un error en la linea 3 pero el compilador reporta error en la linea 5. Por que?**  
+R: El numero de linea corresponde a donde el parser detecto el problema, no necesariamente donde esta el error de escritura. Por ejemplo, si olvidas el `;` al final de una instruccion, el error se detecta en la linea siguiente donde el parser encuentra un token inesperado.
+
+**P: Escribi `diagrama Redes;` pero puse instrucciones de UML dentro. Que pasa?**  
+R: El compilador reporta errores sintacticos porque cada modulo solo reconoce su propio vocabulario. Por ejemplo, `clase` en un diagrama de Redes genera ES34 (verbo invalido) porque el parser de Redes lo interpreta como un identificador sin el verbo `enlaza`.
+
+**P: La consola muestra muchos errores. Como los veo todos?**  
+R: Arrastra el separador entre la consola y el panel principal hacia arriba para agrandar la consola. El compilador puede mostrar hasta 1000 errores sin suprimir ninguno.
+
+**P: Puedo tener comentarios en mi archivo .dac?**  
+R: Si. Usa `//` al inicio de la linea o despues de una instruccion. El lexer ignora todo lo que siga despues de `//` hasta el final de la linea.
+
+**P: Los nombres de los nodos distinguen mayusculas y minusculas?**  
+R: Si. `MiNodo`, `minodo` y `MINODO` son tres identificadores diferentes.
+
+**P: Puedo usar el mismo nombre en dos modulos diferentes?**  
+R: No aplica, ya que cada archivo solo puede tener un tipo de diagrama. La tabla de simbolos se reinicia con cada compilacion.
+
+---
+
+*Manual de Usuario — Diagrams As Code v2.0*  
+*Compilador pedagogico de lenguaje especifico de dominio (DSL)*

@@ -115,7 +115,7 @@ public class RedesParser {
 
     private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
-            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
+            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : (pos > 0 ? tokens.get(pos - 1).getLinea() : 1);
             errores.reportarError(codigo, l, "Sintáctico Redes", mensajeError, "Revisa la guía del módulo Redes.");
             return false;
         }

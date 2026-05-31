@@ -86,7 +86,22 @@ public class LexerBase {
                 continue;
             }
 
-            // 5. Identificadores y Palabras Clave
+            // 5. Identificador que inicia con dígito — EL03
+            if (Character.isDigit(actual)) {
+                StringBuilder sb = new StringBuilder();
+                while (indice < codigo.length() && (Character.isLetterOrDigit(codigo.charAt(indice)) || codigo.charAt(indice) == '_')) {
+                    sb.append(codigo.charAt(indice));
+                    indice++;
+                }
+                manejadorErrores.reportarError(
+                    "EL03", lineaActual, "Análisis Léxico",
+                    "El identificador '" + sb.toString() + "' no puede iniciar con un dígito.",
+                    "Los identificadores deben comenzar con una letra (a-z, A-Z) o guión bajo (_)."
+                );
+                continue;
+            }
+
+            // 6. Identificadores y Palabras Clave
             if (Character.isLetter(actual) || actual == '_') {
                 StringBuilder sb = new StringBuilder();
                 while (indice < codigo.length()) {
@@ -98,9 +113,12 @@ public class LexerBase {
                             && (Character.isLetterOrDigit(codigo.charAt(indice + 1)) || codigo.charAt(indice + 1) == '_')
                             && !Character.isWhitespace(c)
                             && c != ';' && c != ':' && c != '{' && c != '}' && c != '"' && c != '\n') {
-                        // Carácter inválido dentro de un identificador (ej: id@cliente)
-                        // Se reporta pero se fusiona para no partir el token
-                        manejadorErrores.reportarErrorLéxico(lineaActual, c);
+                        // EL04: carácter inválido dentro de un identificador (ej: mi@nodo)
+                        manejadorErrores.reportarError(
+                            "EL04", lineaActual, "Análisis Léxico",
+                            "El carácter '" + c + "' no es válido dentro del identificador '" + sb.toString() + "...'.",
+                            "Los identificadores solo pueden contener letras, dígitos y guión bajo (_)."
+                        );
                         indice++;
                     } else {
                         break;
@@ -115,7 +133,7 @@ public class LexerBase {
                 continue;
             }
 
-            // 6. Captura pedagógica de caracteres inválidos (Errores Léxicos)
+            // 7. Captura pedagógica de caracteres inválidos — EL01
             manejadorErrores.reportarErrorLéxico(lineaActual, actual);
             indice++;
         }

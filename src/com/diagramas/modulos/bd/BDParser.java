@@ -57,7 +57,6 @@ public class BDParser {
     }
 
     private void procesarBloqueComplejo(RaizBDAST raiz, String rol) {
-        int lineaOriginal = tokens.get(pos).getLinea();
         pos++;
 
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES15", "Falta el nombre de la " + rol + ".")) {
@@ -66,9 +65,7 @@ public class BDParser {
         String nombreBloque = tokens.get(pos).getLexema();
         pos++;
 
-        if (!tabla.registrar(nombreBloque, rol)) {
-            errores.reportarError("", lineaOriginal, "Semántico BD", "El elemento '" + nombreBloque + "' ya existe.", "Elige otro identificador.");
-        }
+        tabla.registrar(nombreBloque, rol);
 
         if (!validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "ES16", "Falta abrir '{' para la definición de '" + nombreBloque + "'.")) {
             recuperarPanicoBloque(); return;
@@ -114,7 +111,6 @@ public class BDParser {
     }
 
     private void procesarComponenteLineal(RaizBDAST raiz, String rol) {
-        int lineaOriginal = tokens.get(pos).getLinea();
         pos++;
 
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES22", "Falta el identificador del " + rol + ".")) {
@@ -127,9 +123,7 @@ public class BDParser {
             recuperarPanicoTabla(); return;
         }
         pos++;
-        if (!tabla.registrar(nombre, rol)) {
-            errores.reportarError("", lineaOriginal, "Semántico BD", "El identificador '" + nombre + "' ya está ocupado.", "Usa otro nombre.");
-        }
+        tabla.registrar(nombre, rol);
         raiz.agregarElemento(new NodoTabla(nombre + " [" + rol.toUpperCase() + "]", new ArrayList<>()));
     }
 
@@ -162,7 +156,7 @@ public class BDParser {
 
     private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
-            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
+            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : (pos > 0 ? tokens.get(pos - 1).getLinea() : 1);
             errores.reportarError(codigo, l, "Sintáctico BD", mensajeError, "Verifica las reglas de sintaxis.");
             return false;
         }

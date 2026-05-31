@@ -1,0 +1,71 @@
+autor "Test ES Redes ES27-ES34";
+version "1.0";
+diagrama Redes;
+
+// Dispositivos validos de referencia:
+dispositivo R1 Router;
+dispositivo R2 Switch;
+dispositivo R3 Hub;
+
+// ============================================================
+// ES27: token inesperado (llave sola)
+// Esperado: 1 error ES27. 'dispositivo R4 Hub;' se procesa ok.
+// ============================================================
+{
+dispositivo R4 Hub;
+
+// ============================================================
+// ES28: falta nombre del dispositivo
+// Esperado: 1 error ES28. ';' inmediato = sin cascada.
+// Anti-cascada: 'dispositivo R5 Hub;' se procesa ok.
+// ============================================================
+dispositivo;
+dispositivo R5 Hub;
+
+// ============================================================
+// ES29: falta tipo del dispositivo
+// Esperado: 1 error ES29. ';' inmediato = sin cascada.
+// Anti-cascada: 'dispositivo R6 Hub;' se procesa ok.
+// ============================================================
+dispositivo R6B;
+dispositivo R6 Hub;
+
+// ============================================================
+// ES31: falta ';' al final de declaracion de dispositivo
+// Esperado: 1 error ES31. Recovery consume 'dispositivo R7 Hub;'.
+// Anti-cascada: 'R1 enlaza R2;' se procesa ok.
+// ============================================================
+dispositivo R8 Switch { tipo layer2 }
+dispositivo R7 Hub;
+R1 enlaza R2;
+
+// ============================================================
+// ES32: falta destino en 'enlaza'
+// Esperado: 1 error ES32. ';' inmediato = sin cascada.
+// Anti-cascada: 'R1 enlaza R2;' se procesa ok.
+// ============================================================
+R1 enlaza;
+R1 enlaza R2;
+
+// ============================================================
+// ES33: falta ';' al finalizar 'enlaza'
+// Esperado: 1 error ES33. Recovery consume 'R3 enlaza R4;'.
+// Anti-cascada: 'R2 enlaza R3;' se procesa ok.
+// ============================================================
+R2 enlaza R3
+R3 enlaza R4;
+R2 enlaza R3;
+
+// ============================================================
+// ES34: verbo incorrecto ('conecta' no es 'enlaza')
+// Esperado: 1 error ES34. Recovery consume hasta ';'.
+// Anti-cascada: 'R4 enlaza R5;' se procesa ok.
+// ============================================================
+R4 conecta R5;
+R4 enlaza R5;
+
+// ============================================================
+// ES30: falta '}' en bloque de config - AL FINAL del archivo
+// Esperado: 1 error ES30 al llegar a EOF.
+// ============================================================
+dispositivo R9 Switch { configuracion abierta sin cierre

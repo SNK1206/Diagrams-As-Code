@@ -1,0 +1,125 @@
+autor "Test ES UML ES43-ES54";
+version "1.0";
+diagrama UML;
+
+// ============================================================
+// ES43: token inesperado (llave sola)
+// Esperado: 1 error ES43. 'interfaz Serializable;' se procesa ok.
+// ============================================================
+{
+interfaz Serializable;
+
+// ============================================================
+// ES44-A: falta nombre de clase
+// Esperado: 1 error ES44. Recovery hasta '}'.
+// Anti-cascada: 'clase A {...}' se procesa ok.
+// ============================================================
+clase { atributo x : INT; }
+clase A { atributo id : INT; }
+
+// ============================================================
+// ES44-B: falta nombre de interfaz
+// Esperado: 1 error ES44. ';' inmediato = sin cascada.
+// Anti-cascada: 'interfaz Conducible;' se procesa ok.
+// ============================================================
+interfaz;
+interfaz Conducible;
+
+// ============================================================
+// ES45: falta '{' para abrir clase
+// Esperado: 1 error ES45. Recovery hasta '}'.
+// Anti-cascada: 'clase C {...}' se procesa ok.
+// ============================================================
+clase B nombre : INT;
+}
+clase C { atributo dato : INT; }
+
+// ============================================================
+// ES46: keyword invalido dentro de clase (no es atributo ni metodo)
+// Esperado: 1 error ES46. Recovery consume el atributo erroneo.
+// Anti-cascada: 'atributo correcto ...' se procesa ok dentro del bloque.
+// ============================================================
+clase D {
+    velocidad : INT;
+    atributo correcto : INT;
+}
+
+// ============================================================
+// ES47: falta nombre del miembro
+// Esperado: 1 error ES47. Recovery consume hasta ';'.
+// Anti-cascada: 'atributo nombre ...' se procesa ok.
+// ============================================================
+clase E {
+    atributo : INT;
+    atributo nombre : STRING;
+}
+
+// ============================================================
+// ES48: falta ':' en el miembro
+// Esperado: 1 error ES48. Recovery consume hasta ';'.
+// Anti-cascada: 'atributo otro ...' se procesa ok.
+// ============================================================
+clase F {
+    atributo campo INT;
+    atributo otro : INT;
+}
+
+// ============================================================
+// ES49: falta tipo del miembro
+// Esperado: 1 error ES49. ';' inmediato = sin cascada.
+// Anti-cascada: 'metodo activo ...' se procesa ok.
+// ============================================================
+clase G {
+    atributo sinTipo : ;
+    metodo activo : BOOLEAN;
+}
+
+// ============================================================
+// ES50-A: falta ';' al final del miembro
+// Esperado: 1 error ES50. Recovery consume 'metodo conSemicolon ...'.
+// ============================================================
+clase H {
+    atributo sinSemicolon : INT
+    metodo conSemicolon : VOID;
+}
+
+// ============================================================
+// ES50-B: falta ';' al final de interfaz lineal
+// Esperado: 1 error ES50. Recovery consume 'enum EstadoMotor;'.
+// Anti-cascada: 'enum TipoCombustible;' se procesa ok.
+// ============================================================
+interfaz SinSemicolon
+enum EstadoMotor;
+enum TipoCombustible;
+
+// ============================================================
+// ES52: falta destino en relacion
+// Esperado: 1 error ES52. ';' inmediato = sin cascada.
+// Anti-cascada: 'A extiende C;' se procesa ok.
+// ============================================================
+A extiende;
+A extiende C;
+
+// ============================================================
+// ES53: falta ';' al finalizar relacion
+// Esperado: 1 error ES53. Recovery consume 'C implementa Conducible;'.
+// Anti-cascada: 'A implementa Serializable;' se procesa ok.
+// ============================================================
+C implementa Serializable
+C implementa Conducible;
+A implementa Serializable;
+
+// ============================================================
+// ES54: verbo invalido ('conecta' no existe en UML)
+// Esperado: 1 error ES54. Recovery consume hasta ';'.
+// Anti-cascada: 'A usa C;' se procesa ok.
+// ============================================================
+A conecta C;
+A usa C;
+
+// ============================================================
+// ES51: falta '}' de cierre de clase - AL FINAL del archivo
+// Esperado: 1 error ES51 al llegar a EOF.
+// ============================================================
+clase SinCierre {
+    atributo campo : INT;

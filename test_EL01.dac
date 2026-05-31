@@ -1,0 +1,7 @@
+autor "Test EL01";
+version "1.0";
+diagrama Flujo;
+// EL01: el simbolo % no pertenece al alfabeto DAC
+// Esperado: 1 error EL01. El parser sigue corriendo:
+// 'Nodo' se registra como simbolo valido (el % se omite del flujo de tokens).
+inicio Nodo %;

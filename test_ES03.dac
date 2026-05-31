@@ -1,0 +1,6 @@
+autor "Test ES03";
+version "1.0";
+// ES03: falta ; despues del tipo de diagrama
+// Esperado: solo ES03, NO debe salir ES05
+diagrama Flujo
+inicio Arranque;

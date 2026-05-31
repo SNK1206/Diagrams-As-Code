@@ -1,0 +1,7 @@
+autor "Test EL02";
+version "1.0";
+diagrama Flujo;
+// EL02: cadena abre comilla pero nunca cierra
+// Esperado: 1 error EL02. El lexer agrega tokens sinteticos (TEXTO_LITERAL + ';')
+// para que el parser continue. 'Proceso' se registra como simbolo valido.
+nodo Proceso "descripcion sin cerrar

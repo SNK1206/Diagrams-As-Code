@@ -1,0 +1,106 @@
+autor "Test ES BD ES14-ES26";
+version "1.0";
+diagrama BD;
+
+// ============================================================
+// ES14-A: token inesperado (llave sola)
+// Esperado: 1 error ES14. 'tabla A {...}' se procesa ok.
+// ============================================================
+{
+tabla A { id : INT; }
+
+// ============================================================
+// ES14-B: identificador seguido de '{' sin palabra clave
+// Esperado: 1 error ES14. Recovery hasta '}'.
+// Anti-cascada: 'tabla B {...}' se procesa ok.
+// ============================================================
+SinKeyword { campo : INT; }
+tabla B { nombre : STRING; }
+
+// ============================================================
+// ES15: falta nombre de tabla
+// Esperado: 1 error ES15. Recovery hasta '}'.
+// Anti-cascada: 'tabla C {...}' se procesa ok.
+// ============================================================
+tabla { descripcion : STRING; }
+tabla C { id : INT; }
+
+// ============================================================
+// ES16: falta '{' para abrir bloque
+// Esperado: 1 error ES16. Recovery hasta '}'.
+// Anti-cascada: 'tabla E {...}' se procesa ok.
+// ============================================================
+tabla D;
+}
+tabla E { dato : INT; }
+
+// ============================================================
+// ES17-ES20: un error por atributo malo dentro del mismo bloque
+// ES17: falta nombre de atributo
+// ES18: falta ':'
+// ES19: falta tipo de dato
+// ES20: falta ';' (recovery consume 'ultimo')
+// Anti-cascada: cada error es independiente, no se acumulan.
+// ============================================================
+tabla ConErrores {
+    : INT;
+    malformado INT;
+    tipofalta : ;
+    sinsemicolon : INT
+    ultimo : STRING;
+}
+
+// ============================================================
+// ES21: falta '}' de cierre - SE PONE AL FINAL para no perder nada
+// Esperado: 1 error ES21 al llegar a EOF.
+// (ver al final del archivo)
+// ============================================================
+
+// ============================================================
+// ES22: falta nombre de componente lineal
+// Esperado: 1 error ES22. ';' inmediato = sin cascada.
+// Anti-cascada: 'funcion miFuncion;' se procesa ok.
+// ============================================================
+procedimiento;
+funcion miFuncion;
+
+// ============================================================
+// ES23: falta ';' al final de componente lineal
+// Esperado: 1 error ES23. Recovery consume 'disparador miTrigger;'.
+// Anti-cascada: 'secuencia miSecuencia;' se procesa ok.
+// ============================================================
+procedimiento sinPuntoComa
+disparador miTrigger;
+secuencia miSecuencia;
+
+// ============================================================
+// ES24: falta destino en 'relaciona'
+// Esperado: 1 error ES24. ';' inmediato = sin cascada.
+// Anti-cascada: 'A relaciona B;' se procesa ok.
+// ============================================================
+A relaciona;
+A relaciona B;
+
+// ============================================================
+// ES25: falta ';' al finalizar 'relaciona'
+// Esperado: 1 error ES25. Recovery consume 'C relaciona E;'.
+// Anti-cascada: 'A relaciona B;' se procesa ok.
+// ============================================================
+B relaciona C
+C relaciona E;
+A relaciona B;
+
+// ============================================================
+// ES26: verbo invalido en BD ('conecta' no existe en BD)
+// Esperado: 1 error ES26. Recovery consume hasta ';'.
+// Anti-cascada: 'A relaciona B;' se procesa ok.
+// ============================================================
+A conecta B;
+A relaciona B;
+
+// ============================================================
+// ES21: bloque sin cierre - AL FINAL del archivo
+// Esperado: 1 error ES21 al llegar a EOF.
+// ============================================================
+tabla SinCierre {
+    campo : INT;

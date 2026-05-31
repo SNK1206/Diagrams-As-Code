@@ -44,7 +44,6 @@ public class ConceptualParser {
     }
 
     private void procesarNodoConceptual(RaizConceptualAST raiz, String rol) {
-        int lineaOriginal = tokens.get(pos).getLinea();
         pos++;
 
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES36", "Falta el nombre del " + rol + ".")) {
@@ -64,10 +63,7 @@ public class ConceptualParser {
         }
         pos++;
 
-        if (!tabla.registrar(nombre, rol)) {
-            errores.reportarError("", lineaOriginal, "Semántico Conceptual",
-                "El identificador '" + nombre + "' ya existe.", "Usa un nombre diferente.");
-        }
+        tabla.registrar(nombre, rol);
         raiz.agregarElemento(new NodoConcepto(nombre, rol, descripcion));
     }
 
@@ -99,8 +95,8 @@ public class ConceptualParser {
                 recuperarPanico();
             }
         } else {
-            errores.reportarError("ES42", tOrigen.getLinea(), "Sintáctico Conceptual",
-                "Instrucción inválida después de '" + idOrigen + "'.",
+            errores.reportarError("ES41", tOrigen.getLinea(), "Sintáctico Conceptual",
+                "Se esperaba un verbo de relación después de '" + idOrigen + "'.",
                 "Usa 'agrupa', 'asocia' o 'depende' para definir relaciones conceptuales.");
             recuperarPanico();
         }
@@ -108,7 +104,7 @@ public class ConceptualParser {
 
     private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
-            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : tokens.get(pos - 1).getLinea();
+            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : (pos > 0 ? tokens.get(pos - 1).getLinea() : 1);
             errores.reportarError(codigo, l, "Sintáctico Conceptual", mensajeError, "Revisa la guía del módulo Conceptual.");
             return false;
         }
