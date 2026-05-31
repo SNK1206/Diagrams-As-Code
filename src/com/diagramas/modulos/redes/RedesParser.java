@@ -53,6 +53,7 @@ public class RedesParser {
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES28", "Falta el nombre del dispositivo.")) {
             recuperarPanico(); return;
         }
+        int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
@@ -63,7 +64,7 @@ public class RedesParser {
         pos++;
 
         // Pre-registrar antes del bloque para evitar cascada en instrucciones enlaza
-        tabla.registrar(nombre, "dispositivo_" + tipo);
+        tabla.registrar(nombre, "dispositivo_" + tipo, lineaId);
 
         String config = "";
         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.LLAVE_IZQ) {

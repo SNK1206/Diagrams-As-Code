@@ -40,7 +40,7 @@ public class BDParser {
                     errores.reportarError("ES14", tokenActual.getLinea(), "Sintáctico BD",
                         "Falta la palabra clave antes de '" + tokenActual.getLexema() + "'.",
                         "Especifica el tipo: tabla, vista, esquema o paquete.");
-                    tabla.registrar(tokenActual.getLexema(), "desconocido");
+                    tabla.registrar(tokenActual.getLexema(), "desconocido", tokenActual.getLinea());
                     pos++;
                     recuperarPanicoBloque();
                 } else {
@@ -62,10 +62,11 @@ public class BDParser {
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES15", "Falta el nombre de la " + rol + ".")) {
             recuperarPanicoBloque(); return;
         }
+        int lineaId = tokens.get(pos).getLinea();
         String nombreBloque = tokens.get(pos).getLexema();
         pos++;
 
-        tabla.registrar(nombreBloque, rol);
+        tabla.registrar(nombreBloque, rol, lineaId);
 
         if (!validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "ES16", "Falta abrir '{' para la definición de '" + nombreBloque + "'.")) {
             recuperarPanicoBloque(); return;
@@ -116,6 +117,7 @@ public class BDParser {
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES22", "Falta el identificador del " + rol + ".")) {
             recuperarPanicoTabla(); return;
         }
+        int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
@@ -123,7 +125,7 @@ public class BDParser {
             recuperarPanicoTabla(); return;
         }
         pos++;
-        tabla.registrar(nombre, rol);
+        tabla.registrar(nombre, rol, lineaId);
         raiz.agregarElemento(new NodoTabla(nombre + " [" + rol.toUpperCase() + "]", new ArrayList<>()));
     }
 

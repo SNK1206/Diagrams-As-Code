@@ -315,12 +315,18 @@ public class MainFX extends Application {
 
         // Tabla de símbolos: muestra lo que sí se registró (si diagrama es inválido queda vacía)
         StringBuilder sbSimbolos = new StringBuilder();
-        sbSimbolos.append("Contexto Bloqueado: ").append(tablaSimbolos.getContextoActivo()).append("\n\n");
-        sbSimbolos.append(String.format("%-25s | %-15s\n", "IDENTIFICADOR ENCONTRADO", "TIPO/ROL ASIGNADO"));
-        sbSimbolos.append("----------------------------------------------------\n");
+        sbSimbolos.append("Contexto: ").append(tablaSimbolos.getContextoActivo()).append("\n\n");
+        sbSimbolos.append(String.format("%-22s | %-18s | %5s | %s\n",
+            "IDENTIFICADOR", "TIPO / ROL", "LÍNEA", "DESCRIPCIÓN"));
+        sbSimbolos.append("─".repeat(85)).append("\n");
 
-        for (Map.Entry<String, String> entry : tablaSimbolos.getSimbolos().entrySet()) {
-            sbSimbolos.append(String.format("%-25s | %-15s\n", entry.getKey(), entry.getValue()));
+        for (Map.Entry<String, TablaSimbolos.Entrada> entry : tablaSimbolos.getSimbolos().entrySet()) {
+            String id    = entry.getKey();
+            TablaSimbolos.Entrada e = entry.getValue();
+            String lineaStr = e.linea > 0 ? String.valueOf(e.linea) : "—";
+            String desc  = TablaSimbolos.descripcionPara(id, e.rol);
+            sbSimbolos.append(String.format("%-22s | %-18s | %5s | %s\n",
+                id, e.rol, lineaStr, desc));
         }
         txtSimbolos.setText(sbSimbolos.toString());
 
@@ -355,7 +361,7 @@ public class MainFX extends Application {
         cmbFiltro.setValue("Todos");
         cmbFiltro.setStyle("-fx-font-size: 13px;");
 
-        Label lblConteo = new Label("42 simbolos");
+        Label lblConteo = new Label(TablaSimbologiaEstatica.TABLA.size() + " simbolos");
         lblConteo.setTextFill(Color.LIGHTGRAY);
         lblConteo.setFont(Font.font("System", 12));
 

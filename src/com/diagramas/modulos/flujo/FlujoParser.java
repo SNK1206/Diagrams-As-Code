@@ -55,6 +55,7 @@ public class FlujoParser {
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador después de '" + rol + "'.")) {
             recuperarPanico(); return;
         }
+        int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
@@ -62,7 +63,7 @@ public class FlujoParser {
             recuperarPanico(); return;
         }
         pos++;
-        tabla.registrar(nombre, rol);
+        tabla.registrar(nombre, rol, lineaId);
         raiz.agregarElemento(new NodoProceso(nombre, "[" + rol.toUpperCase() + "]"));
     }
 
@@ -72,6 +73,7 @@ public class FlujoParser {
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador.")) {
             recuperarPanico(); return;
         }
+        int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
@@ -85,7 +87,7 @@ public class FlujoParser {
             recuperarPanico(); return;
         }
         pos++;
-        tabla.registrar(nombre, rol);
+        tabla.registrar(nombre, rol, lineaId);
         raiz.agregarElemento(new NodoProceso(nombre, "[" + rol.toUpperCase() + "] " + texto));
     }
 

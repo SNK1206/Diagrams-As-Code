@@ -129,13 +129,29 @@ El lexer es identico para todos los modulos. El vocabulario base del lenguaje
 `diagrama` recibe un tipo de token propio (PR_DIAGRAMA); el resto de palabras
 reservadas son reconocidas semanticamente por el parser, no lexicamente.
 
+**Campos de estado:**
+  - int indice        : posicion actual dentro del String de codigo fuente
+  - int lineaActual   : linea del caracter que se esta leyendo (base 1)
+  - int columnaActual : columna del caracter actual dentro de la linea (base 1)
+
 **Decisiones de implementacion:**
 - Se usa un indice entero (int indice) en vez de un iterador para
   permitir retroceder o hacer lookahead sin complejidad.
+- El tracking de columna se reinicia a 1 en cada salto de linea (\n),
+  permitiendo reportar errores con linea Y columna exactas.
 - Los comentarios se absorben con un bucle simple hasta encontrar '\n'.
   No generan token porque no aportan informacion al compilador.
 - Los identificadores incluyen letras, digitos y guion bajo (_) pero
   deben comenzar con letra o guion bajo, siguiendo la convencion de Java/C.
+
+**Codigos de error lexicos generados:**
+
+  Codigo | Condicion
+  -------|---------------------------------------------------------------
+  EL01   | Caracter invalido que no pertenece al alfabeto del lenguaje
+  EL02   | Cadena de texto sin cerrar (falta comilla doble de cierre)
+  EL03   | Identificador que comienza con un digito (ej: "2nodo")
+  EL04   | Caracter invalido dentro de un identificador (ej: "mi@nodo")
 
 **Tabla de tokens producidos:**
 
@@ -160,11 +176,17 @@ Modelo de datos que representa la unidad minima del lenguaje.
 **Campos:**
   - tipo    : enum Token.Tipo  (clasificacion del token)
   - lexema  : String           (texto original del codigo fuente)
-  - linea   : int              (numero de linea donde aparece)
+  - linea   : int              (numero de linea donde aparece el token, base 1)
+  - columna : int              (columna donde inicia el token en la linea, base 1)
 
-**Por que guardar la linea:**
+**Constructores:**
+  - Token(tipo, lexema, linea, columna) : constructor completo
+  - Token(tipo, lexema, linea)          : compatibilidad — columna queda en 0
+
+**Por que guardar linea y columna:**
 Para reportar errores con precision. Cuando el parser o el analizador semantico
-detectan un problema, pueden indicar exactamente en que linea ocurrio.
+detectan un problema, pueden indicar exactamente en que linea y columna ocurrio.
+La columna permite al estudiante localizar el error dentro de la linea.
 
 ---
 
@@ -203,23 +225,45 @@ un nuevo caso al switch.
 
 **Que hace:**
 Actua como la memoria del compilador durante el analisis semantico.
+Registra cada identificador junto a su rol, la linea donde aparece y
+genera una descripcion legible automaticamente.
 
 **Estructura interna:**
-  Map<String, String>  nombre --> rol/tipo
+  LinkedHashMap<String, Entrada>  nombre --> Entrada{rol, linea}
+
+  La clase interna Entrada almacena:
+    - String rol   : tipo asignado al identificador (ej. "nodo", "tabla", "inicio")
+    - int    linea : linea del codigo fuente donde fue declarado
+
+  Se usa LinkedHashMap (en lugar de HashMap) para preservar el orden de
+  insercion, de forma que la tabla se muestre en el mismo orden en que
+  aparecen los identificadores en el archivo fuente.
 
 **Operaciones:**
-  - registrar(nombre, rol) : boolean
-    Intenta agregar el identificador. Retorna false si ya existe (duplicado).
+  - registrar(nombre, rol, linea) : boolean
+    Intenta agregar el identificador con su rol y linea de declaracion.
+    Retorna false si ya existe (error semantico: identificador duplicado).
+  - registrar(nombre, rol) : boolean   [sobrecarga de compatibilidad]
+    Llama al anterior con linea = 0 (sin tracking de linea).
   - existe(nombre) : boolean
-    Consulta si un identificador fue declarado (para validar referencias).
+    Consulta si un identificador fue declarado (valida referencias hacia adelante).
   - bloquearContexto(contexto)
-    Registra el modulo activo. Util para diagnosticos y para la interfaz.
+    Registra el modulo activo (ej. "Flujo", "BD"). Util para la GUI.
   - limpiar()
     Reinicia la tabla entre compilaciones.
+  - descripcionPara(nombre, rol) : String   [metodo estatico]
+    Genera una descripcion legible basada en el nombre o rol del simbolo.
+    Casos cubiertos: meta-instrucciones, tipo_diagrama, todos los nodos
+    de Flujo, BD, Redes, Conceptual y UML.
 
-**Por que es un HashMap:**
-El acceso a nombre en O(1) es ideal para la validacion semantica, que
-consulta la existencia de identificadores con frecuencia durante el parseo.
+**Ejemplo de salida en la GUI:**
+
+  IDENTIFICADOR          | TIPO / ROL         | LINEA | DESCRIPCION
+  ───────────────────────────────────────────────────────────────────────────
+  autor                  | Sin Punto Y Coma   |     2 | Metadato: autor del documento
+  diagrama               | Flujo              |     7 | Encabezado del diagrama (Flujo)
+  Flujo                  | tipo_diagrama      |     7 | Modulo activo del compilador
+  Arranque               | inicio             |     8 | Nodo de inicio del flujo
 
 ---
 
@@ -229,15 +273,23 @@ consulta la existencia de identificadores con frecuencia durante el parseo.
 Acumula todos los errores de compilacion en una lista con formato pedagogico.
 
 **Formato de cada error:**
-  ERROR DE COMPILACION [Linea N] [Contexto: fase]
+  ==================================================
+  [ERROR] [ELxx / ESxx] LEXICO | SINTACTICO [Linea N]
   Detalle: descripcion del problema
-  Sugerencia: como corregirlo
+  Consejo: como corregirlo
+  ==================================================
 
 **Dos sobrecargas de reportarError:**
-  - reportarError(int linea, String contexto, String mensaje, String sugerencia)
-    Usada por los modulos originales (Flujo, BD, Redes) y el nucleo.
-  - reportarError(String codigo, int linea, String contexto, String mensaje, String sugerencia)
-    Usada por los modulos nuevos (Conceptual, UML) con codigo de error categorizado.
+  - reportarError(int linea, String contexto, String mensaje, String consejo)
+    Para errores sin codigo categorizado (semanticos simples).
+  - reportarError(String codigo, int linea, String contexto, String mensaje, String consejo)
+    Para errores con codigo EL/ES. Detecta automaticamente si es lexico o
+    sintactico segun si el contexto contiene "Lexico".
+
+**Limite de errores (MAX_ERRORES = 1000):**
+  Si se superan 1000 errores, los adicionales se suprimen con un aviso.
+  Previene que un solo error en cascada sature la salida con miles de
+  mensajes inutil para el estudiante.
 
 **Por que acumular en vez de lanzar excepcion:**
 Lanzar una excepcion detiene la compilacion al primer error. Acumular
@@ -529,14 +581,17 @@ que hacen", independientemente de como los clasifique el lexer internamente.
   descripcion | String | Explicacion del proposito del simbolo
 
 **Total de simbolos registrados: 57**
-(43 originales + 14 nuevos de los modulos Conceptual y UML)
+(6 globales + 10 Flujo + 11 BD + 10 Redes + 6 Conceptual + 8 UML + 4 Puntuacion + 1 Literal + 2 Comentario)
+
+El conteo en la GUI es dinamico: se toma de TablaSimbologiaEstatica.TABLA.size()
+y se actualiza al aplicar cada filtro.
 
 **Metodo filtrar(String modulo):**
 Permite obtener un subconjunto de la tabla segun el modulo activo.
 
   Opcion       | Que incluye
   -------------|------------------------------------------------------
-  "Todos"      | Los 55 simbolos completos
+  "Todos"      | Los 57 simbolos completos
   "Flujo"      | Global + Flujo + Puntuacion
   "BD"         | Global + BD + Puntuacion
   "Redes"      | Global + Redes + Puntuacion
@@ -580,11 +635,12 @@ JavaFX es el framework moderno de Java para UI de escritorio. Provee:
   |    |-- Button Abrir          (azul)
   |    |-- Button Guardar        (morado)
   |    |-- Button Compilar       (verde)
-  |    |-- Button Errores Lexicos (rojo)     --> catalogo de errores lexicos
+  |    |-- Button Errores Lexicos (rojo)     --> catalogo de 58 codigos EL/ES
   |    |-- Button Arbol Derivacion (teal)    --> arbol de derivacion grafico
   |    |-- Region espaciador     (crece para llenar el espacio)
   |    |-- Button Simbologia     (verde oscuro) --> tabla estatica de simbolos
   |    |-- Button Manual         (azul oscuro)  --> manual de usuario
+  |    |-- Button Gramatica DAC  (verde oscuro) --> gramatica_dac.md
   |
   |-- CENTER: SplitPane
   |    |-- VBox panelEditor
@@ -599,18 +655,30 @@ JavaFX es el framework moderno de Java para UI de escritorio. Provee:
        |-- Label "Consola:"
        |-- TextArea txtConsola (solo lectura)
 
+### Acceso al editor activo
+
+El metodo getEditorDePestana(Tab) recupera el TextArea de codigo de la
+pestana activa usando un Map<Tab, TextArea> llamado "editores".
+Al crear cada pestana, el editor se registra en el mapa; al cerrarla,
+se elimina. Esto evita hacer cast de nodos de la escena (mas fragil).
+
 ### Como funciona el compilador en la GUI
 
   ejecutarCompilador() {
-      1. Obtener el texto del TextArea de la pestana activa
+      1. Obtener el TextArea activo via getEditorDePestana(pestanaActiva)
       2. Crear ManejadorErrores y TablaSimbolos limpios
-      3. LexerBase.tokenizar()  --> llenar txtTokens
-      4. Si hay errores lexicos --> mostrar en txtConsola y detener
+      3. LexerBase.tokenizar()  --> llenar txtTokens (con linea y columna)
+      4. Si hay errores lexicos --> mostrar en txtConsola pero continuar
       5. ParserBase.analizarCabecera()  --> delega al modulo
-      6. Llenar txtSimbolos con el contenido de TablaSimbolos
+      6. Llenar txtSimbolos con 4 columnas:
+            IDENTIFICADOR | TIPO/ROL | LINEA | DESCRIPCION
       7. Si hay errores --> mostrar en txtConsola
       8. Si no hay errores --> "COMPILACION EXITOSA"
   }
+
+**Tabla de Simbolos dinamica (4 columnas):**
+La GUI muestra los simbolos registrados durante la compilacion.
+Las descripciones se generan automaticamente via TablaSimbolos.descripcionPara().
 
 ### Ventana modal de Simbologia
 
@@ -802,30 +870,36 @@ el ancho de la ventana.
   --------|------------|-----------------------------------------------------------
   1.0     | 2026-05-30 | Version inicial: nucleo, modulos Flujo y BD
   1.1     | 2026-05-30 | Se agrego el modulo Redes
-  1.2     | 2026-05-30 | Se agrego TablaSimbologiaEstatica (42 simbolos)
+  1.2     | 2026-05-30 | Se agrego TablaSimbologiaEstatica (57 simbolos)
   1.3     | 2026-05-30 | Se agrego interfaz JavaFX (MainFX) con boton de simbologia
   1.4     | 2026-05-30 | Se agrego manual de usuario y boton de manual en la GUI
   1.5     | 2026-05-30 | Merge rama Javier: modulos Conceptual y UML, arbol de
           |            | derivacion grafico, boton de errores lexicos, RedesParser
           |            | reubicado en modulos/redes/
-  1.6     | 2026-05-30 | Tarea 12 completada: gramatica formal EBNF documentada
-          |            | en gramatica_formal.md. TablaSimbologiaEstatica verificada
-          |            | con 57 simbolos (43 originales + 14 de Conceptual y UML).
+  1.6     | 2026-05-30 | Gramatica formal EBNF en gramatica_formal.md.
+          |            | TablaSimbologiaEstatica verificada con 57 simbolos.
           |            | Documentacion tecnica actualizada con secciones 8, 9, 10.
-  1.8     | 2026-05-30 | Nuevo archivo automata_y_gramatica.md: explicacion formal
-          |            | del AFD del lexer, gramatica LL(1), jerarquia de Chomsky,
-          |            | conjuntos FIRST/FOLLOW y ejemplo de derivacion completo.
-          |            | Nodos del arbol de derivacion con tamano dinamico (se
-          |            | ajustan al texto sin desbordamiento). Texto centrado
-          |            | geometricamente usando getLayoutBounds().
-  1.7     | 2026-05-30 | Tarea 11 completada: arbol de derivacion alineado con la
-          |            | gramatica formal. Agrupacion corregida para bloques BD/UML
-          |            | (split en '}' ademas de ';'). Estructura jerarquica con
-          |            | programa_<mod> > cuerpo_<mod> > reglas. Nodos renombrados
-          |            | segun EBNF. Modulos Conceptual y UML incluidos en el arbol.
-          |            | Metodo ntItem() agregado. shortLabel() actualizado.
+  1.7     | 2026-05-30 | Arbol de derivacion alineado con la gramatica formal.
+          |            | Agrupacion corregida para bloques BD/UML (split en '}').
+          |            | Modulos Conceptual y UML incluidos. shortLabel() actualizado.
+  1.8     | 2026-05-30 | automata_y_gramatica.md: AFD del lexer, gramatica LL(1),
+          |            | jerarquia de Chomsky, FIRST/FOLLOW y derivacion completa.
+          |            | Nodos del arbol con tamano dinamico (getLayoutBounds()).
+  2.0     | 2026-05-30 | Merge rama Diego: codigos EL02/EL03/EL04 en LexerBase,
+          |            | MAX_ERRORES=1000 en ManejadorErrores, getEditorDePestana
+          |            | via Map<Tab,TextArea>, 13 archivos de prueba EL/ES.
+          |            | Merge rama Javier: integracion de codigos ES en parsers.
+          |            | Token.java: campo columna (int) con constructor de 4 args.
+          |            | LexerBase: tracking de columna, recuperacion en EL02.
+  2.1     | 2026-05-30 | TablaSimbolos: clase interna Entrada{rol,linea},
+          |            | LinkedHashMap para orden de insercion, registrar con linea,
+          |            | descripcionPara(nombre,rol) para descripciones automaticas.
+          |            | GUI: tabla de simbolos dinamica con 4 columnas
+          |            | (IDENTIFICADOR | TIPO/ROL | LINEA | DESCRIPCION).
+          |            | Contador de simbologia dinamico (TABLA.size()).
+          |            | Boton Gramatica DAC en la toolbar.
 
 ---
 
-*Documentacion Tecnica — Diagrams As Code v1.6*
+*Documentacion Tecnica — Diagrams As Code v2.1*
 *Compilador pedagogico de DSL para diagramas*

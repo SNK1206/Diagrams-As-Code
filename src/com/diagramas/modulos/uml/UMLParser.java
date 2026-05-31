@@ -52,11 +52,12 @@ public class UMLParser {
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES44", "Falta el nombre de la clase.")) {
             recuperarPanicoBloque(); return;
         }
+        int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
         // Pre-registrar antes del bloque para evitar cascada en relaciones
-        tabla.registrar(nombre, "clase");
+        tabla.registrar(nombre, "clase", lineaId);
 
         if (!validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "ES45", "Falta '{' para abrir el cuerpo de la clase '" + nombre + "'.")) {
             recuperarPanicoBloque(); return;
@@ -114,6 +115,7 @@ public class UMLParser {
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES44", "Falta el nombre del " + rol + ".")) {
             recuperarPanico(); return;
         }
+        int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
@@ -122,7 +124,7 @@ public class UMLParser {
         }
         pos++;
 
-        tabla.registrar(nombre, rol);
+        tabla.registrar(nombre, rol, lineaId);
         raiz.agregarElemento(new NodoClase(nombre + " [" + rol.toUpperCase() + "]", new ArrayList<>()));
     }
 

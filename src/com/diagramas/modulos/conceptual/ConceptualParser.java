@@ -49,6 +49,7 @@ public class ConceptualParser {
         if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES36", "Falta el nombre del " + rol + ".")) {
             recuperarPanico(); return;
         }
+        int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
@@ -63,7 +64,7 @@ public class ConceptualParser {
         }
         pos++;
 
-        tabla.registrar(nombre, rol);
+        tabla.registrar(nombre, rol, lineaId);
         raiz.agregarElemento(new NodoConcepto(nombre, rol, descripcion));
     }
 
