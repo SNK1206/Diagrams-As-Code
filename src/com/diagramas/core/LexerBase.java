@@ -4,6 +4,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LexerBase {
+
+    private static final java.util.Set<String> PALABRAS_RESERVADAS = new java.util.HashSet<>(java.util.Arrays.asList(
+        // Meta-instrucciones globales
+        "autor", "version", "tema",
+        // Módulo Flujo
+        "inicio", "fin", "nodo", "condicion", "bucle", "subproceso", "entrada", "salida", "parada", "conecta",
+        // Módulo BD
+        "tabla", "vista", "esquema", "paquete", "procedimiento", "indice", "disparador", "secuencia", "funcion", "relaciona",
+        // Módulo Redes
+        "dispositivo", "nube", "vlan", "subred", "cluster", "tunel", "zona", "puerto", "politica", "enlaza",
+        // Módulo Conceptual
+        "concepto", "categoria", "propiedad", "agrupa", "asocia", "depende",
+        // Módulo UML
+        "clase", "interfaz", "enum", "atributo", "metodo", "extiende", "implementa", "usa"
+    ));
+
     private final String          codigo;
     private final ManejadorErrores manejadorErrores;
     private int indice;
@@ -82,7 +98,7 @@ public class LexerBase {
                     indice++;
                 }
                 if (indice >= codigo.length() || codigo.charAt(indice) == '\n') {
-                    manejadorErrores.reportarError("EL02", lineaActual, "Léxico",
+                    manejadorErrores.reportarError("ES55", lineaActual, "Sintáctico",
                         "Cadena de texto sin cerrar.",
                         "Añade comillas dobles (\") al final del texto.");
                     // Tokens sintéticos para que el parser pueda continuar sin cascada
@@ -95,7 +111,7 @@ public class LexerBase {
                 continue;
             }
 
-            // 5. Identificador que inicia con dígito — EL03
+            // 5. Identificador que inicia con dígito — EL02
             if (Character.isDigit(actual)) {
                 StringBuilder sb = new StringBuilder();
                 while (indice < codigo.length() &&
@@ -105,8 +121,8 @@ public class LexerBase {
                     indice++;
                 }
                 manejadorErrores.reportarError(
-                    "EL03", lineaActual, "Análisis Léxico",
-                    "El identificador '" + sb.toString() + "' no puede iniciar con un dígito.",
+                    "EL02", lineaActual, "Análisis Léxico",
+                    "Identificador inválido: '" + sb.toString() + "' no puede iniciar con un dígito.",
                     "Los identificadores deben comenzar con una letra (a-z, A-Z) o guión bajo (_)."
                 );
                 continue;
@@ -128,8 +144,8 @@ public class LexerBase {
                             && c != ';' && c != ':' && c != '{' && c != '}' && c != '"' && c != '\n') {
                         // EL04: carácter inválido dentro de un identificador (ej: mi@nodo)
                         manejadorErrores.reportarError(
-                            "EL04", lineaActual, "Análisis Léxico",
-                            "El carácter '" + c + "' no es válido dentro del identificador '" + sb.toString() + "...'.",
+                            "EL02", lineaActual, "Análisis Léxico",
+                            "Identificador inválido: carácter '" + c + "' no permitido en '" + sb.toString() + "'.",
                             "Los identificadores solo pueden contener letras, dígitos y guión bajo (_)."
                         );
                         columnaActual++;
@@ -139,8 +155,21 @@ public class LexerBase {
                     }
                 }
                 String lexema = sb.toString();
+                String lexemaLower = lexema.toLowerCase();
                 if (lexema.equals("diagrama")) {
                     tokens.add(new Token(Token.Tipo.PR_DIAGRAMA, lexema, lineaActual, colInicio));
+                } else if (PALABRAS_RESERVADAS.contains(lexema)) {
+                    tokens.add(new Token(Token.Tipo.PALABRA_RESERVADA, lexema, lineaActual, colInicio));
+                } else if (lexemaLower.equals("diagrama")) {
+                    manejadorErrores.reportarError("EL03", lineaActual, "Análisis Léxico",
+                        "Palabra reservada mal escrita: '" + lexema + "'. El lenguaje es sensible a mayúsculas/minúsculas.",
+                        "Escribe la palabra reservada en minúsculas: 'diagrama'.");
+                    tokens.add(new Token(Token.Tipo.PR_DIAGRAMA, "diagrama", lineaActual, colInicio));
+                } else if (PALABRAS_RESERVADAS.contains(lexemaLower)) {
+                    manejadorErrores.reportarError("EL03", lineaActual, "Análisis Léxico",
+                        "Palabra reservada mal escrita: '" + lexema + "'. El lenguaje es sensible a mayúsculas/minúsculas.",
+                        "Escribe la palabra reservada en minúsculas: '" + lexemaLower + "'.");
+                    tokens.add(new Token(Token.Tipo.PALABRA_RESERVADA, lexemaLower, lineaActual, colInicio));
                 } else {
                     tokens.add(new Token(Token.Tipo.IDENTIFICADOR, lexema, lineaActual, colInicio));
                 }

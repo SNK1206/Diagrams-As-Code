@@ -58,30 +58,43 @@ public class TablaSimbolos {
             case "autor":    return "Metadato: autor del documento";
             case "version":  return "Metadato: versión del diagrama";
             case "tema":     return "Metadato: tema o estilo";
-            case "exportar": return "Metadato: ruta de exportación";
-            case "importar": return "Metadato: archivo importado";
             case "diagrama": return "Encabezado del diagrama (" + rol + ")";
         }
         switch (rol.toLowerCase()) {
             case "tipo_diagrama":   return "Módulo activo del compilador";
-            case "inicio":        return "Nodo de inicio del flujo";
-            case "fin":           return "Nodo de terminación del flujo";
-            case "nodo":          return "Elemento de proceso";
-            case "condicion":     return "Decisión condicional (bifurcación)";
-            case "bucle":         return "Estructura iterativa";
-            case "subproceso":    return "Subproceso encapsulado";
-            case "entrada":       return "Lectura de datos del usuario";
-            case "salida":        return "Presentación de datos al usuario";
-            case "parada":        return "Interrupción del proceso";
-            case "tabla":         return "Entidad de base de datos";
-            case "vista":         return "Vista de base de datos";
-            case "esquema":       return "Esquema de BD";
-            case "paquete":       return "Paquete de BD";
-            case "relacion":      return "Relación entre entidades BD";
-            case "clase":         return "Clase UML";
-            case "interfaz":      return "Interfaz UML";
-            case "enum":          return "Enumeración UML";
-            case "desconocido":   return "Tipo no reconocido (error sintáctico)";
+            // Flujo
+            case "inicio":          return "Nodo de inicio del flujo";
+            case "fin":             return "Nodo de terminación del flujo";
+            case "nodo":            return "Proceso o acción genérica";
+            case "condicion":       return "Decisión condicional (bifurcación)";
+            case "bucle":           return "Estructura iterativa";
+            case "subproceso":      return "Subproceso encapsulado";
+            case "entrada":         return "Lectura de datos del usuario";
+            case "salida":          return "Presentación de datos al usuario";
+            case "parada":          return "Interrupción del proceso";
+            // BD — bloques
+            case "tabla":           return "Tabla relacional de base de datos";
+            case "vista":           return "Vista de base de datos";
+            case "esquema":         return "Esquema de BD";
+            case "paquete":         return "Paquete de BD";
+            // BD — lineales
+            case "procedimiento":   return "Procedimiento almacenado de BD";
+            case "indice":          return "Índice de optimización de BD";
+            case "disparador":      return "Trigger o disparador de BD";
+            case "secuencia":       return "Generador de valores secuenciales de BD";
+            case "funcion":         return "Función definida por el usuario en BD";
+            // BD — relación (legacy)
+            case "relacion":        return "Relación entre entidades BD";
+            // Conceptual
+            case "concepto":        return "Concepto principal del mapa conceptual";
+            case "categoria":       return "Categoría o grupo de conceptos";
+            case "propiedad":       return "Propiedad o atributo de un concepto";
+            // UML
+            case "clase":           return "Clase UML";
+            case "interfaz":        return "Interfaz UML";
+            case "enum":            return "Enumeración UML";
+            // Error
+            case "desconocido":     return "Tipo no reconocido (error sintáctico)";
             default:
                 if (rol.startsWith("dispositivo_"))
                     return "Dispositivo de red — tipo: " + rol.substring(12);

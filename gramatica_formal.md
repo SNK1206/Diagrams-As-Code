@@ -59,8 +59,6 @@ meta_instruccion ::= kw_meta TEXTO_LITERAL ';'
 kw_meta          ::= 'autor'
                    | 'version'
                    | 'tema'
-                   | 'exportar'
-                   | 'importar'
 
 cabecera         ::= 'diagrama' tipo_diagrama ';'
 tipo_diagrama    ::= 'Flujo'
@@ -304,8 +302,7 @@ Vista unificada de todas las reglas en un solo bloque de referencia.
 (* ── NIVEL GLOBAL ─────────────────────────────────────────── *)
 programa             ::= { meta_instruccion } cabecera cuerpo_modulo
 
-meta_instruccion     ::= ( 'autor' | 'version' | 'tema'
-                         | 'exportar' | 'importar' ) TEXTO_LITERAL ';'
+meta_instruccion     ::= ( 'autor' | 'version' | 'tema' ) TEXTO_LITERAL ';'
 
 cabecera             ::= 'diagrama' ( 'Flujo' | 'BD' | 'Redes'
                                     | 'Conceptual' | 'UML' ) ';'
@@ -375,7 +372,7 @@ implementado es un **analizador descendente recursivo** (Recursive Descent Parse
 
 | Instrucción | FIRST |
 |-------------|-------|
-| `meta_instruccion` | { `autor`, `version`, `tema`, `exportar`, `importar` } |
+| `meta_instruccion` | { `autor`, `version`, `tema` } |
 | `cabecera` | { `diagrama` } |
 | `decl_nodo_simple` | { `inicio`, `fin` } |
 | `decl_nodo_texto` | { `nodo`, `condicion`, `bucle`, `subproceso`, `entrada`, `salida`, `parada` } |

@@ -5,9 +5,10 @@ public class Token {
     // Enumerador para clasificar cada componente léxico
     public enum Tipo {
         // Palabras clave de infraestructura global
-        PR_DIAGRAMA,    // "diagrama"
-        IDENTIFICADOR,  // Nombres de variables, tablas, nodos, etc. (Ej: Usuarios, R1)
-        TEXTO_LITERAL,  // Cadenas entre comillas (Ej: "192.168.1.1", "Leer credenciales")
+        PR_DIAGRAMA,       // "diagrama"
+        PALABRA_RESERVADA, // Palabras clave de módulo (nodo, clase, tabla, conecta, etc.)
+        IDENTIFICADOR,     // Nombres definidos por el usuario (Ej: Usuarios, R1, miClase)
+        TEXTO_LITERAL,     // Cadenas entre comillas (Ej: "192.168.1.1", "Leer credenciales")
 
         // Signos de puntuación comunes
         PUNTO_Y_COMA,   // ;

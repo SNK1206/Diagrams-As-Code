@@ -47,6 +47,13 @@ public class ManejadorErrores {
         return !errores.isEmpty();
     }
 
+    public boolean tieneErroresLexicos() {
+        for (String e : errores) {
+            if (e.contains("LÉXICO")) return true;
+        }
+        return false;
+    }
+
     public void imprimirErrores() {
         for (String error : errores) {
             System.err.println(error);

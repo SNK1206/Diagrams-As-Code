@@ -514,7 +514,7 @@ private TreeItem<String> construirNodoRegla(List<Token> grupo, String modulo) {
         for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
         return nodo;
     }
-    // Meta-instrucciones: autor, version, tema, exportar, importar
+    // Meta-instrucciones: autor, version, tema
     if (lex.equals("autor") || lex.equals("version") || ...) {
         TreeItem<String> nodo = new TreeItem<>("meta_instruccion");
         for (Token t : grupo) nodo.getChildren().add(tokenItem(t));

@@ -26,7 +26,7 @@ public class UMLParser {
         while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
             Token tokenActual = tokens.get(pos);
 
-            if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR) {
+            if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR || tokenActual.getTipo() == Token.Tipo.PALABRA_RESERVADA) {
                 String lexema = tokenActual.getLexema();
 
                 if (lexema.equals("clase")) {
@@ -47,19 +47,19 @@ public class UMLParser {
     }
 
     private void procesarClase(RaizUMLAST raiz) {
+        int lineaKeyword = tokens.get(pos).getLinea();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES44", "Falta el nombre de la clase.")) {
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES44", "Falta el nombre de la clase.", lineaKeyword)) {
             recuperarPanicoBloque(); return;
         }
         int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        // Pre-registrar antes del bloque para evitar cascada en relaciones
         tabla.registrar(nombre, "clase", lineaId);
 
-        if (!validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "ES45", "Falta '{' para abrir el cuerpo de la clase '" + nombre + "'.")) {
+        if (!validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "ES45", "Falta '{' para abrir el cuerpo de la clase '" + nombre + "'.", lineaId)) {
             recuperarPanicoBloque(); return;
         }
         pos++;
@@ -71,7 +71,8 @@ public class UMLParser {
             else recuperarPanicoMiembro();
         }
 
-        if (!validarSiguienteTipo(Token.Tipo.LLAVE_DER, "ES51", "Falta '}' para cerrar la clase '" + nombre + "'.")) {
+        int lineaCierre = pos > 0 ? tokens.get(pos - 1).getLinea() : lineaId;
+        if (!validarSiguienteTipo(Token.Tipo.LLAVE_DER, "ES51", "Falta '}' para cerrar la clase '" + nombre + "'.", lineaCierre)) {
             return;
         }
         pos++;
@@ -82,9 +83,10 @@ public class UMLParser {
         if (pos >= tokens.size() || tokens.get(pos).getTipo() == Token.Tipo.LLAVE_DER) return null;
 
         Token t = tokens.get(pos);
-        if (t.getTipo() != Token.Tipo.IDENTIFICADOR ||
+        int lineaMiembro = t.getLinea();
+        if ((t.getTipo() != Token.Tipo.IDENTIFICADOR && t.getTipo() != Token.Tipo.PALABRA_RESERVADA) ||
                 (!t.getLexema().equals("atributo") && !t.getLexema().equals("metodo"))) {
-            errores.reportarError("ES46", t.getLinea(), "Sintáctico UML",
+            errores.reportarError("ES46", lineaMiembro, "Sintáctico UML",
                 "Se esperaba 'atributo' o 'metodo' dentro de la clase.",
                 "Define miembros como: 'atributo velocidad : INT;' o 'metodo acelerar : VOID;'.");
             return null;
@@ -92,34 +94,35 @@ public class UMLParser {
         String rolMiembro = t.getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES47", "Falta el nombre del " + rolMiembro + ".")) return null;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES47", "Falta el nombre del " + rolMiembro + ".", lineaMiembro)) return null;
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.DOS_PUNTOS, "ES48", "Falta ':' en la definición de '" + nombre + "'.")) return null;
+        if (!validarSiguienteTipo(Token.Tipo.DOS_PUNTOS, "ES48", "Falta ':' en la definición de '" + nombre + "'.", lineaMiembro)) return null;
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES49", "Falta el tipo del " + rolMiembro + " '" + nombre + "'.")) return null;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES49", "Falta el tipo del " + rolMiembro + " '" + nombre + "'.", lineaMiembro)) return null;
         String tipo = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES50", "Falta ';' al final del " + rolMiembro + " '" + nombre + "'.")) return null;
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES50", "Falta ';' al final del " + rolMiembro + " '" + nombre + "'.", lineaMiembro)) return null;
         pos++;
 
         return new NodoMiembro(rolMiembro, nombre, tipo);
     }
 
     private void procesarComponenteLineal(RaizUMLAST raiz, String rol) {
+        int lineaKeyword = tokens.get(pos).getLinea();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES44", "Falta el nombre del " + rol + ".")) {
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES44", "Falta el nombre del " + rol + ".", lineaKeyword)) {
             recuperarPanico(); return;
         }
         int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES50", "Falta ';' al final de la declaración de '" + nombre + "'.")) {
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES50", "Falta ';' al final de la declaración de '" + nombre + "'.", lineaId)) {
             recuperarPanico(); return;
         }
         pos++;
@@ -131,42 +134,55 @@ public class UMLParser {
     private void procesarRelacion(RaizUMLAST raiz) {
         Token tOrigen = tokens.get(pos);
         String idOrigen = tOrigen.getLexema();
+        int lineaRelacion = tOrigen.getLinea();
         pos++;
 
-        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR) {
+        if (pos < tokens.size() && (tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR || tokens.get(pos).getTipo() == Token.Tipo.PALABRA_RESERVADA)) {
             String verbo = tokens.get(pos).getLexema();
             if (verbo.equals("extiende") || verbo.equals("implementa") || verbo.equals("usa")) {
                 pos++;
 
-                if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES52", "Falta el identificador destino en la instrucción '" + verbo + "'.")) {
+                if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES52", "Falta el identificador destino en la instrucción '" + verbo + "'.", lineaRelacion)) {
                     recuperarPanico(); return;
                 }
                 String idDestino = tokens.get(pos).getLexema();
+                int lineaDestino = tokens.get(pos).getLinea();
                 pos++;
 
-                if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES53", "Falta ';' al finalizar la instrucción '" + verbo + "'.")) {
+                if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES53", "Falta ';' al finalizar la instrucción '" + verbo + "'.", lineaDestino)) {
                     recuperarPanico(); return;
                 }
                 pos++;
                 raiz.agregarElemento(new NodoRelacionUML(idOrigen, verbo, idDestino));
             } else {
-                errores.reportarError("ES54", tOrigen.getLinea(), "Sintáctico UML",
+                errores.reportarError("ES54", lineaRelacion, "Sintáctico UML",
                     "Verbo inválido '" + verbo + "' en '" + idOrigen + "'.",
                     "Usa 'extiende', 'implementa' o 'usa' para definir relaciones UML.");
                 recuperarPanico();
             }
         } else {
-            errores.reportarError("ES54", tOrigen.getLinea(), "Sintáctico UML",
+            errores.reportarError("ES54", lineaRelacion, "Sintáctico UML",
                 "Instrucción inválida después de '" + idOrigen + "'.",
                 "Usa 'extiende', 'implementa' o 'usa' para definir relaciones UML.");
             recuperarPanico();
         }
     }
 
-    private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
-        if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
-            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : (pos > 0 ? tokens.get(pos - 1).getLinea() : 1);
-            errores.reportarError(codigo, l, "Sintáctico UML", mensajeError, "Revisa la guía del módulo UML.");
+    private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError, int linea) {
+        if (pos >= tokens.size()) {
+            errores.reportarError(codigo, linea, "Sintáctico UML", mensajeError, "Revisa la guía del módulo UML.");
+            return false;
+        }
+        Token t = tokens.get(pos);
+        if (esperado == Token.Tipo.IDENTIFICADOR &&
+                (t.getTipo() == Token.Tipo.PALABRA_RESERVADA || t.getTipo() == Token.Tipo.PR_DIAGRAMA)) {
+            errores.reportarError("ES56", linea, "Sintáctico UML",
+                "La palabra reservada '" + t.getLexema() + "' no puede usarse como nombre de identificador.",
+                "Usa un nombre definido por el usuario, no una palabra reservada del lenguaje.");
+            return false;
+        }
+        if (t.getTipo() != esperado) {
+            errores.reportarError(codigo, linea, "Sintáctico UML", mensajeError, "Revisa la guía del módulo UML.");
             return false;
         }
         return true;

@@ -149,22 +149,40 @@ reservadas son reconocidas semanticamente por el parser, no lexicamente.
   Codigo | Condicion
   -------|---------------------------------------------------------------
   EL01   | Caracter invalido que no pertenece al alfabeto del lenguaje
-  EL02   | Cadena de texto sin cerrar (falta comilla doble de cierre)
-  EL03   | Identificador que comienza con un digito (ej: "2nodo")
-  EL04   | Caracter invalido dentro de un identificador (ej: "mi@nodo")
+  EL02   | Identificador invalido: inicia con digito (ej: "2nodo") o
+         | contiene caracter especial (ej: "mi@nodo")
+  EL03   | Palabra reservada mal escrita por mayusculas/minusculas
+         | (ej: "Nodo", "TABLA", "Extiende"). El lexer emite el token
+         | corregido para que el parser pueda continuar sin errores en cascada.
+
+**Codigos de error sintacticos detectados por el Lexer:**
+
+  Codigo | Condicion
+  -------|---------------------------------------------------------------
+  ES55   | Cadena de texto sin cerrar — falta la comilla doble de cierre.
+         | El lexer lo detecta pero se clasifica como error sintactico
+         | porque refleja una violacion de la gramatica (produccion
+         | texto_literal nunca se cierra), no del alfabeto.
+  ES56   | Palabra reservada usada como nombre de identificador de usuario.
+         | Se genera en validarSiguienteTipo() de cada parser modulo cuando
+         | se espera IDENTIFICADOR pero se recibe PALABRA_RESERVADA o PR_DIAGRAMA.
 
 **Tabla de tokens producidos:**
 
-  Token           | Cuando se genera
-  ----------------|--------------------------------------
-  PR_DIAGRAMA     | Cuando el lexema es exactamente "diagrama"
-  IDENTIFICADOR   | Cualquier otra palabra (incluyendo palabras reservadas de modulo)
-  TEXTO_LITERAL   | Cadena entre comillas dobles
-  PUNTO_Y_COMA    | Caracter ;
-  DOS_PUNTOS      | Caracter :
-  LLAVE_IZQ       | Caracter {
-  LLAVE_DER       | Caracter }
-  EOF             | Final del archivo (siempre se agrega al final)
+  Token            | Cuando se genera
+  -----------------|--------------------------------------
+  PR_DIAGRAMA      | Cuando el lexema es exactamente "diagrama"
+  PALABRA_RESERVADA| Cuando el lexema coincide con alguna de las ~40 palabras
+                   | reservadas de modulo (inicio, nodo, tabla, dispositivo,
+                   | clase, extiende, etc.). Lista definida en PALABRAS_RESERVADAS.
+  IDENTIFICADOR    | Palabra formada por letras/digitos/_ que NO es "diagrama"
+                   | ni ninguna palabra reservada de modulo
+  TEXTO_LITERAL    | Cadena entre comillas dobles
+  PUNTO_Y_COMA     | Caracter ;
+  DOS_PUNTOS       | Caracter :
+  LLAVE_IZQ        | Caracter {
+  LLAVE_DER        | Caracter }
+  EOF              | Final del archivo (siempre se agrega al final)
 
 ---
 
@@ -196,7 +214,7 @@ La columna permite al estudiante localizar el error dentro de la linea.
 Analiza la cabecera obligatoria del archivo y delega al submodulo.
 
 **Responsabilidades:**
-  1. Procesar meta-instrucciones (autor, version, tema, exportar, importar)
+  1. Procesar meta-instrucciones (autor, version, tema)
   2. Detectar la instruccion "diagrama <Tipo>;"
   3. Bloquear el contexto en la TablaSimbolos
   4. Recortar la lista de tokens y pasarsela al parser del modulo
@@ -285,6 +303,13 @@ Acumula todos los errores de compilacion en una lista con formato pedagogico.
   - reportarError(String codigo, int linea, String contexto, String mensaje, String consejo)
     Para errores con codigo EL/ES. Detecta automaticamente si es lexico o
     sintactico segun si el contexto contiene "Lexico".
+
+**Metodo tieneErroresLexicos():**
+  Recorre la lista de errores acumulados y retorna true solo si alguno
+  contiene la cadena "LEXICO" en su texto formateado. Esto distingue
+  errores EL01-EL03 (verdaderamente lexicos) de ES55 (cadena sin cerrar,
+  detectada por el lexer pero clasificada como sintactica). La GUI usa
+  este metodo para determinar el prefijo de la consola correctamente.
 
 **Limite de errores (MAX_ERRORES = 1000):**
   Si se superan 1000 errores, los adicionales se suprimen con un aviso.
@@ -533,14 +558,14 @@ Recursive Descent Parser (analizador descendente recursivo).
 
 ### Palabras reservadas por modulo
 
-Todas las palabras reservadas del lenguaje (excepto "diagrama") son tokenizadas
-como IDENTIFICADOR por el Lexer. El Parser las reconoce por su posicion en la
-gramatica, no por su tipo de token. Esto permite un Lexer generico y estable
-que no necesita modificarse al agregar nuevos modulos.
+"diagrama" recibe el token PR_DIAGRAMA. Todas las demas palabras reservadas
+de modulo reciben el token PALABRA_RESERVADA. El Lexer las reconoce por su
+lexema exacto (sensible a mayusculas/minusculas). Si se escriben con mayusculas
+incorrectas se genera EL03 y el Lexer emite el token corregido en minusculas.
 
-  Modulo      | Palabras reservadas
+  Modulo      | Palabras reservadas (token: PALABRA_RESERVADA)
   ------------|----------------------------------------------------------
-  Global      | diagrama, autor, version, tema, exportar, importar
+  Global      | autor, version, tema
   Flujo       | inicio, fin, nodo, condicion, bucle, subproceso,
               | entrada, salida, parada, conecta
   BD          | tabla, vista, esquema, paquete, procedimiento, indice,
@@ -719,17 +744,25 @@ Las descripciones se generan automaticamente via TablaSimbolos.descripcionPara()
 
 ## 13. Decisiones de Disenio
 
-### Por que las palabras reservadas de modulo son IDENTIFICADOR y no PR_*
+### Por que las palabras reservadas de modulo son PALABRA_RESERVADA y no PR_* individuales
 
 Alternativa descartada: crear un token PR_INICIO, PR_NODO, PR_TABLA, etc.
 
-Razon: el lexer seria especifico de cada modulo. Si se agrega un nuevo modulo,
-hay que modificar el lexer. La decision de disenio fue mantener el lexer
-completamente generico y dejar que cada parser reconozca sus palabras
-reservadas por contexto (posicion en la gramatica).
+Razon: tener decenas de tipos de token individuales (uno por cada palabra reservada)
+habria complicado el lexer y el parser sin ningun beneficio real. En su lugar,
+todas las palabras reservadas de modulo comparten el tipo PALABRA_RESERVADA y el
+parser las distingue por su lexema (su texto exacto).
 
-Ventaja: el lexer es un componente estable que nunca necesita cambios.
-La extension del lenguaje se hace agregando parsers, no modificando el nucleo.
+Ventaja: agregar una nueva palabra reservada solo requiere incluirla en el Set
+PALABRAS_RESERVADAS del LexerBase. No es necesario modificar el enum Token.Tipo
+ni los parsers existentes.
+
+**Efecto en la deteccion de ES56:**
+Al cambiar las palabras reservadas de IDENTIFICADOR a PALABRA_RESERVADA, los
+parsers deben aceptar ambos tipos cuando buscan verbos (conecta, relaciona, etc.)
+o palabras clave (inicio, nodo, clase, etc.). validarSiguienteTipo() detecta
+automaticamente el caso erroneo: si se esperaba IDENTIFICADOR pero llega
+PALABRA_RESERVADA o PR_DIAGRAMA, genera ES56 en lugar del error generico.
 
 ### Por que cinco modulos con sus propios AST
 
@@ -898,8 +931,30 @@ el ancho de la ventana.
           |            | (IDENTIFICADOR | TIPO/ROL | LINEA | DESCRIPCION).
           |            | Contador de simbologia dinamico (TABLA.size()).
           |            | Boton Gramatica DAC en la toolbar.
+  2.2     | 2026-06-03 | NUEVA clasificacion de tokens: palabras reservadas de modulo
+          |            | ahora producen token PALABRA_RESERVADA (antes IDENTIFICADOR).
+          |            | Set PALABRAS_RESERVADAS en LexerBase con las ~40 palabras.
+          |            | Todos los parsers actualizados: checks de verbo y keyword
+          |            | aceptan IDENTIFICADOR || PALABRA_RESERVADA para no romper
+          |            | con el nuevo tipo de token.
+          |            | Reestructuracion de codigos de error lexicos:
+          |            |   EL02 unifica digito-inicio y caracter-invalido-en-id.
+          |            |   EL03 (NUEVO): palabra reservada mal escrita en mayusculas;
+          |            |     el lexer emite el token corregido para evitar cascadas.
+          |            |   ES55 (NUEVO/reclasificado): cadena sin cerrar pasa de
+          |            |     lexico (EL02 anterior) a sintactico.
+          |            |   ES56 (NUEVO): palabra reservada usada como identificador
+          |            |     de usuario; generado en validarSiguienteTipo() de los
+          |            |     5 parsers cuando se esperaba IDENTIFICADOR y llego
+          |            |     PALABRA_RESERVADA o PR_DIAGRAMA.
+          |            | ManejadorErrores: metodo tieneErroresLexicos() para
+          |            |   distinguir EL01-EL03 de ES55 en la consola de la GUI.
+          |            | TablaSimbolos.descripcionPara(): corregidas descripciones
+          |            |   faltantes para nodo, condicion, bucle, subproceso,
+          |            |   entrada, salida, parada, procedimiento, indice, disparador,
+          |            |   secuencia, funcion, concepto, categoria, propiedad.
 
 ---
 
-*Documentacion Tecnica — Diagrams As Code v2.1*
+*Documentacion Tecnica — Diagrams As Code v2.2*
 *Compilador pedagogico de DSL para diagramas*

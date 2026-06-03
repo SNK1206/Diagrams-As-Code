@@ -283,10 +283,9 @@ reglas que pueden derivar la cadena vacía (ε).
 ### Conjuntos FIRST de las reglas principales
 
 ```
-FIRST(programa)          = { 'autor', 'version', 'tema', 'exportar',
-                             'importar', 'diagrama' }
+FIRST(programa)          = { 'autor', 'version', 'tema', 'diagrama' }
 
-FIRST(meta_instruccion)  = { 'autor', 'version', 'tema', 'exportar', 'importar' }
+FIRST(meta_instruccion)  = { 'autor', 'version', 'tema' }
 
 FIRST(cabecera)          = { 'diagrama' }
 

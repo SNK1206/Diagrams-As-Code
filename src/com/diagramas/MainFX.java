@@ -307,7 +307,7 @@ public class MainFX extends Application {
         }
         txtTokens.setText(sbTokens.toString());
 
-        boolean hayErroresLexicos = manejadorErrores.tieneErrores();
+        boolean hayErroresLexicos = manejadorErrores.tieneErroresLexicos();
 
         // 2. FASE SINTÁCTICA — corre siempre para registrar los símbolos válidos
         ParserBase parserBase = new ParserBase(tokens, tablaSimbolos, manejadorErrores);
@@ -569,7 +569,7 @@ public class MainFX extends Application {
         List<Token> tokens = lexer.tokenizar();
 
         if (errores.tieneErrores()) {
-            txtConsola.setText("El archivo tiene errores lexicos. Corrigelos antes de generar el arbol.");
+            txtConsola.setText("El archivo tiene errores. Corrígelos antes de generar el árbol.");
             return;
         }
 
@@ -621,8 +621,7 @@ public class MainFX extends Application {
             Token primero = grupo.get(0);
             String lexPrimero = primero.getLexema();
             boolean esMeta = lexPrimero.equals("autor") || lexPrimero.equals("version") ||
-                             lexPrimero.equals("tema") || lexPrimero.equals("exportar") ||
-                             lexPrimero.equals("importar");
+                             lexPrimero.equals("tema");
             boolean esCabecera = primero.getTipo() == Token.Tipo.PR_DIAGRAMA;
             TreeItem<String> n = construirNodoRegla(grupo, modulo);
             if (n == null) continue;
@@ -1001,8 +1000,7 @@ public class MainFX extends Application {
         }
 
         // ── Meta-instruccion: kw_meta TEXTO_LITERAL ';' ───────────────────────
-        if (lex.equals("autor") || lex.equals("version") || lex.equals("tema") ||
-            lex.equals("exportar") || lex.equals("importar")) {
+        if (lex.equals("autor") || lex.equals("version") || lex.equals("tema")) {
             TreeItem<String> nodo = ntItem("meta_instruccion");
             for (Token t : grupo) nodo.getChildren().add(tokenItem(t));
             return nodo;
@@ -1204,19 +1202,17 @@ public class MainFX extends Application {
 
         // --- Errores extraídos literalmente del código fuente del compilador ---
         ObservableList<ErrorLexico> todos = FXCollections.observableArrayList(
-            // ── LÉXICOS — LexerBase.java (2 llamadas reales) ─────────────────
+            // ── LÉXICOS — LexerBase.java ──────────────────────────────────────
             new ErrorLexico("EL01", "Léxico",
                 "Carácter inválido — el símbolo no pertenece al alfabeto del lenguaje DAC"),
             new ErrorLexico("EL02", "Léxico",
-                "Cadena de texto sin cerrar — falta comilla doble de cierre (\")"),
+                "Identificador inválido — no puede iniciar con un dígito o contener caracteres especiales (ej: '2nodo', 'mi@nodo' son inválidos)"),
             new ErrorLexico("EL03", "Léxico",
-                "Identificador inválido — no puede iniciar con un dígito (ej: '2nodo' debe ser 'nodo2')"),
-            new ErrorLexico("EL04", "Léxico",
-                "Carácter inválido dentro de un identificador — solo se permiten letras, dígitos y guión bajo (ej: 'mi@nodo' es inválido)"),
+                "Palabra reservada mal escrita — se detectó una palabra clave con mayúsculas incorrectas (ej: 'Nodo', 'TABLA'). El lenguaje es sensible a mayúsculas/minúsculas"),
 
             // ── SINTÁCTICOS — ParserBase.java ────────────────────────────────
             new ErrorLexico("ES01", "Sintáctico",
-                "[Sintáctico Núcleo] Falta ';' al final de la instrucción (autor, version, tema, exportar, importar)"),
+                "[Sintáctico Núcleo] Falta ';' al final de la instrucción (autor, version, tema)"),
             new ErrorLexico("ES02", "Sintáctico",
                 "[Sintáctico Núcleo] Se esperaba un texto entre comillas después de la meta-instrucción"),
             new ErrorLexico("ES03", "Sintáctico",
@@ -1225,6 +1221,10 @@ public class MainFX extends Application {
                 "[Sintáctico] Falta el tipo de diagrama después de 'diagrama'"),
             new ErrorLexico("ES05", "Sintáctico",
                 "[Sintáctico] No se encontró la cabecera principal 'diagrama <Tipo>;'"),
+            new ErrorLexico("ES55", "Sintáctico",
+                "[Sintáctico] Cadena de texto sin cerrar — falta la comilla doble de cierre (\")"),
+            new ErrorLexico("ES56", "Sintáctico",
+                "[Sintáctico] Palabra reservada usada como nombre de identificador — no se puede usar una palabra clave del lenguaje como nombre definido por el usuario"),
 
             // ── SINTÁCTICOS — FlujoParser.java ───────────────────────────────
             new ErrorLexico("ES06", "Sintáctico",

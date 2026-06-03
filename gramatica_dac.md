@@ -57,8 +57,7 @@ GRAMÁTICA GLOBAL — CABECERA Y ESTRUCTURA
       ::= { meta_instruccion } cabecera cuerpo_modulo
 
   meta_instruccion
-      ::= ( 'autor' | 'version' | 'tema'
-            | 'exportar' | 'importar' ) TEXTO_LITERAL ';'
+      ::= ( 'autor' | 'version' | 'tema' ) TEXTO_LITERAL ';'
 
   cabecera
       ::= 'diagrama' tipo_diagrama ';'

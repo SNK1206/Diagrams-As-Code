@@ -25,7 +25,7 @@ public class FlujoParser {
         while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
             Token tokenActual = tokens.get(pos);
 
-            if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR) {
+            if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR || tokenActual.getTipo() == Token.Tipo.PALABRA_RESERVADA) {
                 String lexema = tokenActual.getLexema();
 
                 if (lexema.equals("inicio")) {
@@ -50,16 +50,17 @@ public class FlujoParser {
     }
 
     private void procesarNodoSimple(RaizFlujoAST raiz, String rol) {
+        int lineaKeyword = tokens.get(pos).getLinea();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador después de '" + rol + "'.")) {
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador después de '" + rol + "'.", lineaKeyword)) {
             recuperarPanico(); return;
         }
         int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES08", "Falta ';' al final de la declaración de '" + nombre + "'.")) {
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES08", "Falta ';' al final de la declaración de '" + nombre + "'.", lineaId)) {
             recuperarPanico(); return;
         }
         pos++;
@@ -68,22 +69,24 @@ public class FlujoParser {
     }
 
     private void procesarNodoConTexto(RaizFlujoAST raiz, String rol) {
+        int lineaKeyword = tokens.get(pos).getLinea();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador.")) {
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador.", lineaKeyword)) {
             recuperarPanico(); return;
         }
         int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.TEXTO_LITERAL, "ES09", "Falta la descripción entre comillas para la instrucción '" + rol + "'.")) {
+        if (!validarSiguienteTipo(Token.Tipo.TEXTO_LITERAL, "ES09", "Falta la descripción entre comillas para la instrucción '" + rol + "'.", lineaId)) {
             recuperarPanico(); return;
         }
+        int lineaTexto = tokens.get(pos).getLinea();
         String texto = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES10", "Falta ';' al final de la línea.")) {
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES10", "Falta ';' al final de la línea.", lineaTexto)) {
             recuperarPanico(); return;
         }
         pos++;
@@ -94,34 +97,47 @@ public class FlujoParser {
     private void procesarConexionOError(RaizFlujoAST raiz) {
         Token tOrigen = tokens.get(pos);
         String idOrigen = tOrigen.getLexema();
+        int lineaRelacion = tOrigen.getLinea();
         pos++;
 
-        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR && tokens.get(pos).getLexema().equals("conecta")) {
+        if (pos < tokens.size() && (tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR || tokens.get(pos).getTipo() == Token.Tipo.PALABRA_RESERVADA) && tokens.get(pos).getLexema().equals("conecta")) {
             pos++;
 
-            if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES11", "Falta el elemento destino para la conexión.")) {
+            if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES11", "Falta el elemento destino para la conexión.", lineaRelacion)) {
                 recuperarPanico(); return;
             }
             String idDestino = tokens.get(pos).getLexema();
+            int lineaDestino = tokens.get(pos).getLinea();
             pos++;
 
-            if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES12", "Falta ';' al finalizar la instrucción de conexión.")) {
+            if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES12", "Falta ';' al finalizar la instrucción de conexión.", lineaDestino)) {
                 recuperarPanico(); return;
             }
             pos++;
             raiz.agregarElemento(new NodoConexion(idOrigen, idDestino));
         } else {
-            errores.reportarError("ES13", tOrigen.getLinea(), "Sintáctico Flujo",
+            errores.reportarError("ES13", lineaRelacion, "Sintáctico Flujo",
                 "Instrucción o verbo inválido en '" + idOrigen + "'.",
                 "Si deseas conectar elementos utiliza el verbo exclusivo 'conecta'.");
             recuperarPanico();
         }
     }
 
-    private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError) {
-        if (pos >= tokens.size() || tokens.get(pos).getTipo() != esperado) {
-            int l = (pos < tokens.size()) ? tokens.get(pos).getLinea() : (pos > 0 ? tokens.get(pos - 1).getLinea() : 1);
-            errores.reportarError(codigo, l, "Sintáctico Flujo", mensajeError, "Revisa la sintaxis del diagrama.");
+    private boolean validarSiguienteTipo(Token.Tipo esperado, String codigo, String mensajeError, int linea) {
+        if (pos >= tokens.size()) {
+            errores.reportarError(codigo, linea, "Sintáctico Flujo", mensajeError, "Revisa la sintaxis del diagrama.");
+            return false;
+        }
+        Token t = tokens.get(pos);
+        if (esperado == Token.Tipo.IDENTIFICADOR &&
+                (t.getTipo() == Token.Tipo.PALABRA_RESERVADA || t.getTipo() == Token.Tipo.PR_DIAGRAMA)) {
+            errores.reportarError("ES56", linea, "Sintáctico Flujo",
+                "La palabra reservada '" + t.getLexema() + "' no puede usarse como nombre de identificador.",
+                "Usa un nombre definido por el usuario, no una palabra reservada del lenguaje.");
+            return false;
+        }
+        if (t.getTipo() != esperado) {
+            errores.reportarError(codigo, linea, "Sintáctico Flujo", mensajeError, "Revisa la sintaxis del diagrama.");
             return false;
         }
         return true;
