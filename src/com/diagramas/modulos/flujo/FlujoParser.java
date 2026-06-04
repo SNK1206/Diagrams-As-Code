@@ -25,7 +25,8 @@ public class FlujoParser {
         while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
             Token tokenActual = tokens.get(pos);
 
-            if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR || tokenActual.getTipo() == Token.Tipo.PALABRA_RESERVADA) {
+            if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR
+                    || tokenActual.getTipo() == Token.Tipo.PALABRA_RESERVADA) {
                 String lexema = tokenActual.getLexema();
 
                 if (lexema.equals("inicio")) {
@@ -41,8 +42,8 @@ public class FlujoParser {
                 }
             } else {
                 errores.reportarError("ES06", tokenActual.getLinea(), "Sintáctico Flujo",
-                    "Token inesperado '" + tokenActual.getLexema() + "'.",
-                    "Inicia la línea con una declaración válida (nodo, condicion, etc.) o una conexión.");
+                        "Token inesperado '" + tokenActual.getLexema() + "'.",
+                        "Inicia la línea con una declaración válida (nodo, condicion, etc.) o una conexión.");
                 pos++;
             }
         }
@@ -53,15 +54,19 @@ public class FlujoParser {
         int lineaKeyword = tokens.get(pos).getLinea();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador después de '" + rol + "'.", lineaKeyword)) {
-            recuperarPanico(); return;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07",
+                "Falta el nombre del identificador después de '" + rol + "'.", lineaKeyword)) {
+            recuperarPanico();
+            return;
         }
         int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES08", "Falta ';' al final de la declaración de '" + nombre + "'.", lineaId)) {
-            recuperarPanico(); return;
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES08",
+                "Falta ';' al final de la declaración de '" + nombre + "'.", lineaId)) {
+            recuperarPanico();
+            return;
         }
         pos++;
         tabla.registrar(nombre, rol, lineaId);
@@ -72,22 +77,27 @@ public class FlujoParser {
         int lineaKeyword = tokens.get(pos).getLinea();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador.", lineaKeyword)) {
-            recuperarPanico(); return;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES07", "Falta el nombre del identificador.",
+                lineaKeyword)) {
+            recuperarPanico();
+            return;
         }
         int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.TEXTO_LITERAL, "ES09", "Falta la descripción entre comillas para la instrucción '" + rol + "'.", lineaId)) {
-            recuperarPanico(); return;
+        if (!validarSiguienteTipo(Token.Tipo.TEXTO_LITERAL, "ES09",
+                "Falta la descripción entre comillas para la instrucción '" + rol + "'.", lineaId)) {
+            recuperarPanico();
+            return;
         }
         int lineaTexto = tokens.get(pos).getLinea();
         String texto = tokens.get(pos).getLexema();
         pos++;
 
         if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES10", "Falta ';' al final de la línea.", lineaTexto)) {
-            recuperarPanico(); return;
+            recuperarPanico();
+            return;
         }
         pos++;
         tabla.registrar(nombre, rol, lineaId);
@@ -100,25 +110,32 @@ public class FlujoParser {
         int lineaRelacion = tOrigen.getLinea();
         pos++;
 
-        if (pos < tokens.size() && (tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR || tokens.get(pos).getTipo() == Token.Tipo.PALABRA_RESERVADA) && tokens.get(pos).getLexema().equals("conecta")) {
+        if (pos < tokens.size()
+                && (tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR
+                        || tokens.get(pos).getTipo() == Token.Tipo.PALABRA_RESERVADA)
+                && tokens.get(pos).getLexema().equals("conecta")) {
             pos++;
 
-            if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES11", "Falta el elemento destino para la conexión.", lineaRelacion)) {
-                recuperarPanico(); return;
+            if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES11", "Falta el elemento destino para la conexión.",
+                    lineaRelacion)) {
+                recuperarPanico();
+                return;
             }
             String idDestino = tokens.get(pos).getLexema();
             int lineaDestino = tokens.get(pos).getLinea();
             pos++;
 
-            if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES12", "Falta ';' al finalizar la instrucción de conexión.", lineaDestino)) {
-                recuperarPanico(); return;
+            if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES12",
+                    "Falta ';' al finalizar la instrucción de conexión.", lineaDestino)) {
+                recuperarPanico();
+                return;
             }
             pos++;
             raiz.agregarElemento(new NodoConexion(idOrigen, idDestino));
         } else {
             errores.reportarError("ES13", lineaRelacion, "Sintáctico Flujo",
-                "Instrucción o verbo inválido en '" + idOrigen + "'.",
-                "Si deseas conectar elementos utiliza el verbo exclusivo 'conecta'.");
+                    "Instrucción o verbo inválido en '" + idOrigen + "'.",
+                    "Si deseas conectar elementos utiliza el verbo exclusivo 'conecta'.");
             recuperarPanico();
         }
     }
@@ -132,8 +149,8 @@ public class FlujoParser {
         if (esperado == Token.Tipo.IDENTIFICADOR &&
                 (t.getTipo() == Token.Tipo.PALABRA_RESERVADA || t.getTipo() == Token.Tipo.PR_DIAGRAMA)) {
             errores.reportarError("ES56", linea, "Sintáctico Flujo",
-                "La palabra reservada '" + t.getLexema() + "' no puede usarse como nombre de identificador.",
-                "Usa un nombre definido por el usuario, no una palabra reservada del lenguaje.");
+                    "La palabra reservada '" + t.getLexema() + "' no puede usarse como nombre de identificador.",
+                    "Usa un nombre definido por el usuario, no una palabra reservada del lenguaje.");
             return false;
         }
         if (t.getTipo() != esperado) {
@@ -144,9 +161,17 @@ public class FlujoParser {
     }
 
     private void recuperarPanico() {
-        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA
+                && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            String lex = tokens.get(pos).getLexema();
+            if (lex.equals("inicio") || lex.equals("fin") || lex.equals("nodo") ||
+                    lex.equals("condicion") || lex.equals("bucle") || lex.equals("subproceso") ||
+                    lex.equals("entrada") || lex.equals("salida") || lex.equals("parada")) {
+                break; // Freno de emergencia: nueva instrucción detectada
+            }
             pos++;
         }
-        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
+        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA)
+            pos++;
     }
 }

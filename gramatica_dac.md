@@ -176,7 +176,7 @@ MÓDULO CONCEPTUAL  (activado con: diagrama Conceptual;)
 
   relacion_conceptual
       ::= IDENTIFICADOR
-          ( 'agrupa' | 'asocia' | 'depende' )
+          ( 'agrupa' | 'asocia' | 'depende' | 'abarca' | 'incluye' )
           IDENTIFICADOR ';'
 
 ----------------------------------------------------------------
@@ -222,6 +222,8 @@ RESUMEN DE VERBOS DE RELACIÓN POR MÓDULO
   Conceptual   agrupa               Incluye un concepto en una categoría
                asocia               Relaciona dos conceptos
                depende              Indica dependencia entre conceptos
+               abarca               Indica que un concepto abarca a otro
+               incluye              Indica que un concepto incluye a otro
   UML          extiende             Herencia entre clases
                implementa           Clase implementa una interfaz
                usa                  Dependencia entre clases

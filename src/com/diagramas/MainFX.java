@@ -568,8 +568,12 @@ public class MainFX extends Application {
         LexerBase lexer = new LexerBase(codigo, errores);
         List<Token> tokens = lexer.tokenizar();
 
+        TablaSimbolos tablaVacia = new TablaSimbolos();
+        ParserBase parser = new ParserBase(tokens, tablaVacia, errores);
+        parser.analizarCabecera();
+
         if (errores.tieneErrores()) {
-            txtConsola.setText("El archivo tiene errores. Corrígelos antes de generar el árbol.");
+            txtConsola.setText("El archivo tiene errores sintácticos o léxicos. Compila el archivo para ver los detalles y corrígelos antes de generar el árbol.");
             return;
         }
 

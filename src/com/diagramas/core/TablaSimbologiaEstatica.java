@@ -87,6 +87,8 @@ public class TablaSimbologiaEstatica {
         t.add(new EntradaSimbolo("agrupa",        "PALABRA_RESERVADA", "Conceptual - Verbo",   "Agrupa un concepto dentro de una categoria"));
         t.add(new EntradaSimbolo("asocia",        "PALABRA_RESERVADA", "Conceptual - Verbo",   "Establece asociacion entre dos conceptos"));
         t.add(new EntradaSimbolo("depende",       "PALABRA_RESERVADA", "Conceptual - Verbo",   "Indica dependencia entre dos conceptos"));
+        t.add(new EntradaSimbolo("abarca",        "PALABRA_RESERVADA", "Conceptual - Verbo",   "Indica que un concepto abarca a otro"));
+        t.add(new EntradaSimbolo("incluye",       "PALABRA_RESERVADA", "Conceptual - Verbo",   "Indica que un concepto incluye a otro"));
 
         // --- MODULO UML: Bloques ---
         t.add(new EntradaSimbolo("clase",         "PALABRA_RESERVADA", "UML - Bloque",         "Define una clase UML con atributos y metodos"));

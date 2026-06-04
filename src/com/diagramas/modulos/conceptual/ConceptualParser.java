@@ -36,7 +36,7 @@ public class ConceptualParser {
             } else {
                 errores.reportarError("ES35", tokenActual.getLinea(), "Sintáctico Conceptual",
                     "Token inesperado '" + tokenActual.getLexema() + "'.",
-                    "Inicia con 'concepto', 'categoria' o 'propiedad', o define una relación (agrupa, asocia, depende).");
+                    "Inicia con 'concepto', 'categoria' o 'propiedad', o define una relación (agrupa, asocia, depende, abarca, incluye).");
                 pos++;
             }
         }
@@ -78,7 +78,7 @@ public class ConceptualParser {
 
         if (pos < tokens.size() && (tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR || tokens.get(pos).getTipo() == Token.Tipo.PALABRA_RESERVADA)) {
             String verbo = tokens.get(pos).getLexema();
-            if (verbo.equals("agrupa") || verbo.equals("asocia") || verbo.equals("depende")) {
+            if (verbo.equals("agrupa") || verbo.equals("asocia") || verbo.equals("depende") || verbo.equals("abarca") || verbo.equals("incluye")) {
                 pos++;
 
                 if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES39", "Falta el identificador destino en la instrucción '" + verbo + "'.", lineaRelacion)) {
@@ -96,13 +96,13 @@ public class ConceptualParser {
             } else {
                 errores.reportarError("ES42", lineaRelacion, "Sintáctico Conceptual",
                     "Verbo inválido '" + verbo + "' en '" + idOrigen + "'.",
-                    "Usa 'agrupa', 'asocia' o 'depende' para definir relaciones conceptuales.");
+                    "Usa 'agrupa', 'asocia', 'depende', 'abarca' o 'incluye' para definir relaciones conceptuales.");
                 recuperarPanico();
             }
         } else {
             errores.reportarError("ES41", lineaRelacion, "Sintáctico Conceptual",
                 "Se esperaba un verbo de relación después de '" + idOrigen + "'.",
-                "Usa 'agrupa', 'asocia' o 'depende' para definir relaciones conceptuales.");
+                "Usa 'agrupa', 'asocia', 'depende', 'abarca' o 'incluye' para definir relaciones conceptuales.");
             recuperarPanico();
         }
     }
@@ -128,7 +128,13 @@ public class ConceptualParser {
     }
 
     private void recuperarPanico() {
-        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            String lex = tokens.get(pos).getLexema();
+            if (lex.equals("concepto") || lex.equals("categoria") || lex.equals("propiedad")) {
+                break; // Freno de emergencia
+            }
+            pos++;
+        }
         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
     }
 }

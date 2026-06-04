@@ -66,6 +66,13 @@ public class UMLParser {
 
         List<NodoMiembro> miembros = new ArrayList<>();
         while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            String lex = tokens.get(pos).getLexema();
+            // Lookahead: Si la instrucción dentro de la clase NO empieza con 'atributo' ni 'metodo', asumimos que faltó la llave '}' y nos salimos.
+            if ((tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR || tokens.get(pos).getTipo() == Token.Tipo.PALABRA_RESERVADA) && 
+                !lex.equals("atributo") && !lex.equals("metodo")) {
+                break;
+            }
+
             NodoMiembro m = leerMiembro();
             if (m != null) miembros.add(m);
             else recuperarPanicoMiembro();
@@ -189,17 +196,29 @@ public class UMLParser {
     }
 
     private void recuperarPanico() {
-        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            String lex = tokens.get(pos).getLexema();
+            if (lex.equals("clase") || lex.equals("interfaz") || lex.equals("enum")) break;
+            pos++;
+        }
         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
     }
 
     private void recuperarPanicoBloque() {
-        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            String lex = tokens.get(pos).getLexema();
+            if (lex.equals("clase") || lex.equals("interfaz") || lex.equals("enum")) break;
+            pos++;
+        }
         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.LLAVE_DER) pos++;
     }
 
     private void recuperarPanicoMiembro() {
-        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            String lex = tokens.get(pos).getLexema();
+            if (lex.equals("atributo") || lex.equals("metodo")) break;
+            pos++;
+        }
         if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
     }
 }

@@ -26,7 +26,8 @@ public class BDParser {
         while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
             Token tokenActual = tokens.get(pos);
 
-            if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR || tokenActual.getTipo() == Token.Tipo.PALABRA_RESERVADA) {
+            if (tokenActual.getTipo() == Token.Tipo.IDENTIFICADOR
+                    || tokenActual.getTipo() == Token.Tipo.PALABRA_RESERVADA) {
                 String lexema = tokenActual.getLexema();
 
                 if (lexema.equals("tabla") || lexema.equals("vista") ||
@@ -38,8 +39,8 @@ public class BDParser {
                     procesarComponenteLineal(raiz, lexema);
                 } else if (pos + 1 < tokens.size() && tokens.get(pos + 1).getTipo() == Token.Tipo.LLAVE_IZQ) {
                     errores.reportarError("ES14", tokenActual.getLinea(), "Sintáctico BD",
-                        "Falta la palabra clave antes de '" + tokenActual.getLexema() + "'.",
-                        "Especifica el tipo: tabla, vista, esquema o paquete.");
+                            "Falta la palabra clave antes de '" + tokenActual.getLexema() + "'.",
+                            "Especifica el tipo: tabla, vista, esquema o paquete.");
                     tabla.registrar(tokenActual.getLexema(), "desconocido", tokenActual.getLinea());
                     pos++;
                     recuperarPanicoBloque();
@@ -48,8 +49,8 @@ public class BDParser {
                 }
             } else {
                 errores.reportarError("ES14", tokenActual.getLinea(), "Sintáctico BD",
-                    "Token inesperado '" + tokenActual.getLexema() + "'.",
-                    "Inicia la línea con un componente (tabla, vista, etc.) o una relación.");
+                        "Token inesperado '" + tokenActual.getLexema() + "'.",
+                        "Inicia la línea con un componente (tabla, vista, etc.) o una relación.");
                 pos++;
             }
         }
@@ -60,8 +61,10 @@ public class BDParser {
         int lineaKeyword = tokens.get(pos).getLinea();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES15", "Falta el nombre de la " + rol + ".", lineaKeyword)) {
-            recuperarPanicoBloque(); return;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES15", "Falta el nombre de la " + rol + ".",
+                lineaKeyword)) {
+            recuperarPanicoBloque();
+            return;
         }
         int lineaId = tokens.get(pos).getLinea();
         String nombreBloque = tokens.get(pos).getLexema();
@@ -69,20 +72,33 @@ public class BDParser {
 
         tabla.registrar(nombreBloque, rol, lineaId);
 
-        if (!validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "ES16", "Falta abrir '{' para la definición de '" + nombreBloque + "'.", lineaId)) {
-            recuperarPanicoBloque(); return;
+        if (!validarSiguienteTipo(Token.Tipo.LLAVE_IZQ, "ES16",
+                "Falta abrir '{' para la definición de '" + nombreBloque + "'.", lineaId)) {
+            recuperarPanicoBloque();
+            return;
         }
         pos++;
 
         List<Atributo> atributos = new ArrayList<>();
-        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER
+                && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            // Lookahead: Si el token es Identificador pero el siguiente NO es ':', nos
+            // salimos del bloque
+            if (tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR && pos + 1 < tokens.size()
+                    && tokens.get(pos + 1).getTipo() != Token.Tipo.DOS_PUNTOS) {
+                break;
+            }
+
             Atributo attr = leerAtributo();
-            if (attr != null) atributos.add(attr);
-            else recuperarPanicoAtributo();
+            if (attr != null)
+                atributos.add(attr);
+            else
+                recuperarPanicoAtributo();
         }
 
         int lineaCierre = pos > 0 ? tokens.get(pos - 1).getLinea() : lineaId;
-        if (!validarSiguienteTipo(Token.Tipo.LLAVE_DER, "ES21", "Falta cerrar '}' para el bloque '" + nombreBloque + "'.", lineaCierre)) {
+        if (!validarSiguienteTipo(Token.Tipo.LLAVE_DER, "ES21",
+                "Falta cerrar '}' para el bloque '" + nombreBloque + "'.", lineaCierre)) {
             return;
         }
         pos++;
@@ -91,14 +107,17 @@ public class BDParser {
 
     private Atributo leerAtributo() {
         int lineaAttr = pos < tokens.size() ? tokens.get(pos).getLinea() : 1;
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES17", "Falta el nombre del atributo.", lineaAttr)) return null;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES17", "Falta el nombre del atributo.", lineaAttr))
+            return null;
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.DOS_PUNTOS, "ES18", "Falta ':' en la definición del atributo.", lineaAttr)) return null;
+        if (!validarSiguienteTipo(Token.Tipo.DOS_PUNTOS, "ES18", "Falta ':' en la definición del atributo.", lineaAttr))
+            return null;
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES19", "Falta el tipo de dato del atributo.", lineaAttr)) return null;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES19", "Falta el tipo de dato del atributo.", lineaAttr))
+            return null;
         String tipoDato = tokens.get(pos).getLexema();
         int lineaTipo = tokens.get(pos).getLinea();
         pos++;
@@ -110,7 +129,8 @@ public class BDParser {
         }
 
         int lineaFin = pos > 0 ? tokens.get(pos - 1).getLinea() : lineaTipo;
-        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES20", "Falta ';' al final del atributo.", lineaFin)) return null;
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES20", "Falta ';' al final del atributo.", lineaFin))
+            return null;
         pos++;
 
         return new Atributo(nombre, tipoDato, modificador);
@@ -120,15 +140,19 @@ public class BDParser {
         int lineaKeyword = tokens.get(pos).getLinea();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES22", "Falta el identificador del " + rol + ".", lineaKeyword)) {
-            recuperarPanicoTabla(); return;
+        if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES22", "Falta el identificador del " + rol + ".",
+                lineaKeyword)) {
+            recuperarPanicoTabla();
+            return;
         }
         int lineaId = tokens.get(pos).getLinea();
         String nombre = tokens.get(pos).getLexema();
         pos++;
 
-        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES23", "Falta ';' al final del componente lineal.", lineaId)) {
-            recuperarPanicoTabla(); return;
+        if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES23", "Falta ';' al final del componente lineal.",
+                lineaId)) {
+            recuperarPanicoTabla();
+            return;
         }
         pos++;
         tabla.registrar(nombre, rol, lineaId);
@@ -141,25 +165,32 @@ public class BDParser {
         int lineaRelacion = tOrigen.getLinea();
         pos++;
 
-        if (pos < tokens.size() && (tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR || tokens.get(pos).getTipo() == Token.Tipo.PALABRA_RESERVADA) && tokens.get(pos).getLexema().equals("relaciona")) {
+        if (pos < tokens.size()
+                && (tokens.get(pos).getTipo() == Token.Tipo.IDENTIFICADOR
+                        || tokens.get(pos).getTipo() == Token.Tipo.PALABRA_RESERVADA)
+                && tokens.get(pos).getLexema().equals("relaciona")) {
             pos++;
 
-            if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES24", "Falta el identificador destino en instrucción 'relaciona'.", lineaRelacion)) {
-                recuperarPanicoTabla(); return;
+            if (!validarSiguienteTipo(Token.Tipo.IDENTIFICADOR, "ES24",
+                    "Falta el identificador destino en instrucción 'relaciona'.", lineaRelacion)) {
+                recuperarPanicoTabla();
+                return;
             }
             String idDestino = tokens.get(pos).getLexema();
             int lineaDestino = tokens.get(pos).getLinea();
             pos++;
 
-            if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES25", "Falta ';' al finalizar la instrucción 'relaciona'.", lineaDestino)) {
-                recuperarPanicoTabla(); return;
+            if (!validarSiguienteTipo(Token.Tipo.PUNTO_Y_COMA, "ES25",
+                    "Falta ';' al finalizar la instrucción 'relaciona'.", lineaDestino)) {
+                recuperarPanicoTabla();
+                return;
             }
             pos++;
             raiz.agregarElemento(new NodoRelacion(idOrigen, idDestino));
         } else {
             errores.reportarError("ES26", lineaRelacion, "Sintáctico BD",
-                "Verbo inválido en '" + idOrigen + "'.",
-                "Usa el verbo 'relaciona' para bases de datos.");
+                    "Verbo inválido en '" + idOrigen + "'.",
+                    "Usa el verbo 'relaciona' para bases de datos.");
             recuperarPanicoTabla();
         }
     }
@@ -173,8 +204,8 @@ public class BDParser {
         if (esperado == Token.Tipo.IDENTIFICADOR &&
                 (t.getTipo() == Token.Tipo.PALABRA_RESERVADA || t.getTipo() == Token.Tipo.PR_DIAGRAMA)) {
             errores.reportarError("ES56", linea, "Sintáctico BD",
-                "La palabra reservada '" + t.getLexema() + "' no puede usarse como nombre de identificador.",
-                "Usa un nombre definido por el usuario, no una palabra reservada del lenguaje.");
+                    "La palabra reservada '" + t.getLexema() + "' no puede usarse como nombre de identificador.",
+                    "Usa un nombre definido por el usuario, no una palabra reservada del lenguaje.");
             return false;
         }
         if (t.getTipo() != esperado) {
@@ -185,17 +216,40 @@ public class BDParser {
     }
 
     private void recuperarPanicoAtributo() {
-        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
-        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA
+                && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF)
+            pos++;
+        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA)
+            pos++;
     }
 
     private void recuperarPanicoTabla() {
-        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
-        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA) pos++;
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.PUNTO_Y_COMA
+                && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            String lex = tokens.get(pos).getLexema();
+            if (lex.equals("tabla") || lex.equals("vista") || lex.equals("esquema") || lex.equals("paquete") ||
+                    lex.equals("procedimiento") || lex.equals("indice") || lex.equals("disparador") ||
+                    lex.equals("secuencia") || lex.equals("funcion")) {
+                break;
+            }
+            pos++;
+        }
+        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.PUNTO_Y_COMA)
+            pos++;
     }
 
     private void recuperarPanicoBloque() {
-        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER && tokens.get(pos).getTipo() != Token.Tipo.EOF) pos++;
-        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.LLAVE_DER) pos++;
+        while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.LLAVE_DER
+                && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
+            String lex = tokens.get(pos).getLexema();
+            if (lex.equals("tabla") || lex.equals("vista") || lex.equals("esquema") || lex.equals("paquete") ||
+                    lex.equals("procedimiento") || lex.equals("indice") || lex.equals("disparador") ||
+                    lex.equals("secuencia") || lex.equals("funcion")) {
+                break;
+            }
+            pos++;
+        }
+        if (pos < tokens.size() && tokens.get(pos).getTipo() == Token.Tipo.LLAVE_DER)
+            pos++;
     }
 }

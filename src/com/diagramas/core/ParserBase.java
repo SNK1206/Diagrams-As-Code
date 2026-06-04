@@ -16,7 +16,17 @@ public class ParserBase {
         this.pos = 0;
     }
 
+
+
     public void analizarCabecera() {
+        long numDiagramas = tokens.stream().filter(t -> t.getTipo() == Token.Tipo.PR_DIAGRAMA).count();
+        if (numDiagramas > 1) {
+            manejadorErrores.reportarError("ES57", tokens.get(0).getLinea(), "Sintáctico Núcleo",
+                "Solo se permite un diagrama por archivo.",
+                "Elimina las declaraciones múltiples de 'diagrama'. Un archivo .dac solo puede contener un diagrama a la vez.");
+            return;
+        }
+
         boolean diagramaEncontrado = false;
 
         while (pos < tokens.size() && tokens.get(pos).getTipo() != Token.Tipo.EOF) {
